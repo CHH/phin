@@ -1,6 +1,6 @@
 <?php
 /**
- * A simple HTTP Server for PHP
+ * A simple HTTP Server with a Rack-like Protocol
  *
  * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
  * @license MIT License
