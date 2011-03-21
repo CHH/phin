@@ -21,9 +21,8 @@ $server->run(function($env) {
     $body[] = "<pre>" . print_r($env, true). "</pre>";
 
     $body[] = <<<HTML
-        <form method="post" action="/" enctype="multipart/form-data">
+        <form method="post" action="/">
             <input name="foo" placeholder="Type something">
-            <input type="file" name="bar">
             <input type="submit" value="Submit">
         </form>
 HTML;

@@ -19,4 +19,3 @@ interface Parser
      */
     function parse($raw, \HTTP\Server\Env $env);
 }
-

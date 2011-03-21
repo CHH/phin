@@ -111,6 +111,15 @@ class Server
     protected $app;
 
     /**
+     * Name of the Net_Server Driver to use, defaults to the Sequential driver, 
+     * as it is cross-platform. You may use the "Fork" Driver on *nix Systems for
+     * better Performance.
+     * 
+     * @var string
+     */
+    protected $driverName = "Sequential";
+    
+    /**
      * Constructor
      *
      * @param array $config Array of options
@@ -167,8 +176,17 @@ class Server
     {
         try {
             $env = new Env;
+            $env->setServerName($this->host);
+            $env->setServerPort($this->port);
+            
             $this->getParser()->parse($rawMessage, $env);
-
+            
+            $method = $env->getRequestMethod();
+            
+            if ("POST" == $method or "PUT" == $method) {
+                $this->parseRequestBody($client, $env);
+            }
+            
             if (is_callable($this->app)) {
                 $response = call_user_func($this->app, $env);
             } else {
@@ -234,7 +252,7 @@ class Server
         // Send headers
         foreach ($headers as $header => $value) {
             $header = $this->normalizeHeader($header);
-            $driver->sendData(sprintf("%s: %s\r\n", $header, $value));
+            $driver->sendData($client, sprintf("%s: %s\r\n", $header, $value));
         }
 
         $driver->sendData($client, "\r\n\r\n");
@@ -283,6 +301,11 @@ class Server
         $this->documentRoot = $documentRoot;
     }
 
+    function setDriverName($name)
+    {
+        $this->driverName = $name;
+    }
+
     /**
      * Retrieve an instance of our TCP/IP Server stack
      *
@@ -291,7 +314,7 @@ class Server
     function getDriver()
     {
         if (null === $this->driver) {
-            $this->driver = Net_Server::create("Fork", $this->host, $this->port);
+            $this->driver = Net_Server::create($this->driverName, $this->host, $this->port);
             $this->driver->setEndCharacter("\r\n\r\n");
             $this->driver->setCallbackObject($this);
         }
@@ -317,7 +340,7 @@ class Server
     function getParser()
     {
         if (null === $this->parser) {
-            $this->parser = new Server\Request\Parser\ExtHTTP;
+            $this->parser = new Server\Request\StandardParser;
         }
         return $this->parser;
     }
@@ -357,6 +380,47 @@ class Server
         return $this;
     }
 
+    /**
+     * Retrieve the Request's body directly from the Socket
+     */
+    protected function parseRequestBody($clientId = 0, \HTTP\Server\Env $env)
+    {
+        $socket = $this->getDriver()->clientFD[$clientId];
+
+        if (empty($env["HTTP_CONTENT_LENGTH"])) {
+            return;
+        }
+        $contentLength = $env["HTTP_CONTENT_LENGTH"];
+        
+        $bufferSize = 1024;
+        $data  = '';
+
+        while (true) {
+            if ($bufferSize > $contentLength) {
+                $bufferSize = $contentLength;
+            }
+
+            $buffer = @socket_read($socket, $bufferSize, PHP_BINARY_READ);
+            $data .= $buffer;
+            
+            $contentLength = $contentLength - $bufferSize;
+            
+            if ($contentLength == 0 or !$buffer) {
+                break;
+            }
+        }
+        
+        if (strlen($data) != $env["HTTP_CONTENT_LENGTH"]) {
+            throw new Server\MalformedMessageException(sprintf(
+                "Value of Content-Length Header does not match actual Content-Length: "
+                . "%d Bytes expected, %d Bytes received",
+                $env["HTTP_CONTENT_LENGTH"], strlen($data)
+            ));
+        }
+        
+        $env->setInputStream(fopen("data://text/plain," . $data, "rb"));
+    }
+    
     protected function normalizeHeader($header)
     {
         $header = str_replace(array('-', '_'), ' ', $header);
