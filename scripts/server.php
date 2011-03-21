@@ -21,13 +21,17 @@ $server->run(function($env) {
     $body[] = "<pre>" . print_r($env, true). "</pre>";
 
     $body[] = <<<HTML
-        <form method="post" action="/">
+        <form method="post" action="/" enctype="multipart/form-data">
             <input name="foo" placeholder="Type something">
+            <input type="file" name="bar">
             <input type="submit" value="Submit">
         </form>
 HTML;
 
+    $body[] = "<pre>" . stream_get_contents($env["server.input"]) . "</pre>";
+
     $body[] = "</body></html>";
+
     return array(200, array(), $body);
 });
 

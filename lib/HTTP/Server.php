@@ -15,6 +15,11 @@ use Net_Server,
     Net_Server_Driver,
     HTTP\Server\Env;
 
+/**
+ * @todo Write own Net Drivers
+ * @todo Write own Request Parsers and parse while reading from socket to correctly
+ * capture Request Bodies
+ */
 class Server
 {
     /**
@@ -42,9 +47,9 @@ class Server
         307 => 'Temporary Redirect',
         400 => 'Bad Request',
         401 => 'Unauthorized',
-        402 => 'Payment Granted',
+        402 => 'Payment Required',
         403 => 'Forbidden',
-        404 => 'File Not Found',
+        404 => 'Not Found',
         405 => 'Method Not Allowed',
         406 => 'Not Acceptable',
         407 => 'Proxy Authentication Required',
@@ -58,6 +63,7 @@ class Server
         415 => 'Unsupported Media Type',
         416 => 'Requested range not satisfiable',
         417 => 'Expectation Failed',
+        418 => 'I\'m a teapot',
         422 => 'Unprocessable Entity',
         423 => 'Locked',
         424 => 'Failed Dependency',
