@@ -15,11 +15,6 @@ use Net_Server,
     Net_Server_Driver,
     HTTP\Server\Env;
 
-/**
- * @todo Write own Net Drivers
- * @todo Write own Request Parsers and parse while reading from socket to correctly
- * capture Request Bodies
- */
 class Server
 {
     /**
@@ -78,9 +73,6 @@ class Server
     /** @var Net_Server_Driver */
     protected $driver;
 
-    /** @var string */
-    protected $documentRoot;
-
     /**
      * Hostname or IP Address for listening
      */
@@ -92,6 +84,16 @@ class Server
      * @var int
      */
     protected $port = "3000";
+
+    /**
+     * Default response headers
+     *
+     * @var array
+     */
+    protected $defaultHeaders = array(
+        "x-powered-by" => "PEAR/HTTP_Server2",
+        "connection" => "close"
+    );
 
     /**
      * HTTP Protocol version
@@ -108,7 +110,7 @@ class Server
      *
      * @var callback
      */
-    protected $app;
+    protected $handler;
 
     /**
      * Name of the Net_Server Driver. You may use the "Fork" Driver on *nix Systems for
@@ -156,7 +158,7 @@ class Server
                 "run() expects a valid callback, %s given.", gettype($callback)
             ));
         }
-        $this->app = $callback;
+        $this->handler = $callback;
         return $this;
     }
 
@@ -186,16 +188,18 @@ class Server
             $env->setServerName($this->host);
             $env->setServerPort($this->port);
 
+            // Parse Request Message Head
             $this->getParser()->parse($rawMessage, $env);
 
+            // Retrieve the Request Body on POST or PUT requests
             $method = $env->getRequestMethod();
-
             if ("POST" == $method or "PUT" == $method) {
                 $this->parseRequestBody($client, $env);
             }
 
-            if (is_callable($this->app)) {
-                $response = call_user_func($this->app, $env);
+            // Call the Request Handler with the Server Environment as sole argument
+            if (is_callable($this->handler)) {
+                $response = call_user_func($this->handler, $env);
             } else {
                 $response = array(404);
             }
@@ -212,8 +216,7 @@ class Server
             $response = array($status);
             print $e;
         }
-        $this->sendResponse($client, $response);
-
+        $this->sendResponse($client, $env, $response);
         $this->getDriver()->closeConnection($client);
     }
 
@@ -223,18 +226,14 @@ class Server
      * @param int $client ID of the Client
      * @param array $response The Response array,
      */
-    protected function sendResponse($client = 0, array $response)
+    protected function sendResponse($client = 0, Server\Env $env, array $response)
     {
         $status  = empty($response[0]) ? 200     : $response[0];
         $headers = empty($response[1]) ? array() : $response[1];
         $body    = empty($response[2]) ? ''      : $response[2];
 
-        $headers = array_merge(array(
-            "x-powered-by" => "PEAR Net_HTTP2",
-            "connection" => "close"
-        ), $headers);
-
-        $driver = $this->getDriver();
+        $headers = array_merge($this->defaultHeaders, $headers);
+        $driver  = $this->getDriver();
 
         // Send Response head
         $driver->sendData($client, sprintf(
@@ -245,15 +244,24 @@ class Server
         $format = ini_get('y2k_compliance') ? 'D, d M Y' : 'l, d-M-y';
         $headers["Date"] = gmdate($format .' H:i:s \G\M\T', time());
 
+        if ("HEAD" == $env->getRequestMethod()) {
+            $body = null;
+        }
+
         /*
-         * Append content length
+         * Build headers for message body
          */
-        if (is_string($body)) {
-            $headers["Content-Length"] = strlen($body);
-        } else if (is_array($body)) {
-            $headers["Content-Length"] = array_reduce($body, function($sum, $value) {
-                return $sum + strlen($value);
-            }, 0);
+        if (!empty($body)) {
+            // Default Content-Type to text/html
+            !empty($headers["Content-Type"]) ?: $headers["Content-Type"] = "text/html";
+
+            if (is_string($body)) {
+                $headers["Content-Length"] = strlen($body);
+            } else if (is_array($body)) {
+                $headers["Content-Length"] = array_reduce($body, function($sum, $value) {
+                    return $sum + strlen($value);
+                }, 0);
+            }
         }
 
         // Send headers
@@ -301,11 +309,6 @@ class Server
     function setHost($host)
     {
         $this->host = $host;
-    }
-
-    function setDocumentRoot($documentRoot)
-    {
-        $this->documentRoot = $documentRoot;
     }
 
     function setDriverName($name)
@@ -390,6 +393,11 @@ class Server
 
     /**
      * Retrieve the Request's body directly from the Socket
+     *
+     * It's mainly a bad hack.
+     *
+     * @param int $clientId
+     * @param Server\Env $env Server Environment Variables
      */
     protected function parseRequestBody($clientId = 0, \HTTP\Server\Env $env)
     {
