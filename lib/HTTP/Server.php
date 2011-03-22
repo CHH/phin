@@ -111,14 +111,14 @@ class Server
     protected $app;
 
     /**
-     * Name of the Net_Server Driver to use, defaults to the Sequential driver, 
+     * Name of the Net_Server Driver to use, defaults to the Sequential driver,
      * as it is cross-platform. You may use the "Fork" Driver on *nix Systems for
      * better Performance.
-     * 
+     *
      * @var string
      */
     protected $driverName = "Sequential";
-    
+
     /**
      * Constructor
      *
@@ -178,15 +178,15 @@ class Server
             $env = new Env;
             $env->setServerName($this->host);
             $env->setServerPort($this->port);
-            
+
             $this->getParser()->parse($rawMessage, $env);
-            
+
             $method = $env->getRequestMethod();
-            
+
             if ("POST" == $method or "PUT" == $method) {
                 $this->parseRequestBody($client, $env);
             }
-            
+
             if (is_callable($this->app)) {
                 $response = call_user_func($this->app, $env);
             } else {
@@ -376,6 +376,7 @@ class Server
             if (!is_callable(array($this, $method))) {
                 throw new Server\UnexpectedValueException("$option is not defined");
             }
+            $this->{$method}($value);
         }
         return $this;
     }
@@ -385,31 +386,33 @@ class Server
      */
     protected function parseRequestBody($clientId = 0, \HTTP\Server\Env $env)
     {
-        $socket = $this->getDriver()->clientFD[$clientId];
+        $driver = $this->getDriver();
+        $socket = $driver->clientFD[$clientId];
 
         if (empty($env["HTTP_CONTENT_LENGTH"])) {
             return;
         }
         $contentLength = $env["HTTP_CONTENT_LENGTH"];
-        
-        $bufferSize = 1024;
-        $data  = '';
 
-        while (true) {
+        $bufferSize = 1024;
+        $data = $driver->_readLeftOver;
+
+        // Read the rest of the body directly from the socket if not in _readLeftOver
+        while (strlen($data) < $contentLength) {
             if ($bufferSize > $contentLength) {
                 $bufferSize = $contentLength;
             }
 
             $buffer = @socket_read($socket, $bufferSize, PHP_BINARY_READ);
             $data .= $buffer;
-            
+
             $contentLength = $contentLength - $bufferSize;
-            
+
             if ($contentLength == 0 or !$buffer) {
                 break;
             }
         }
-        
+
         if (strlen($data) != $env["HTTP_CONTENT_LENGTH"]) {
             throw new Server\MalformedMessageException(sprintf(
                 "Value of Content-Length Header does not match actual Content-Length: "
@@ -417,10 +420,10 @@ class Server
                 $env["HTTP_CONTENT_LENGTH"], strlen($data)
             ));
         }
-        
+
         $env->setInputStream(fopen("data://text/plain," . $data, "rb"));
     }
-    
+
     protected function normalizeHeader($header)
     {
         $header = str_replace(array('-', '_'), ' ', $header);
