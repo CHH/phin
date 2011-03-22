@@ -283,7 +283,7 @@ class Server
         } else if (is_resource($body)) {
             while (!feof($body)) {
                 $data = fread($body, 4096);
-                $driver->sendData($clientId, $data);
+                $driver->sendData($client, $data);
             }
             fclose($body);
         }

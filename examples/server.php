@@ -1,6 +1,6 @@
 <?php
 
-define("INCLUDE_PATH", realpath(__DIR__ . "/../lib"));
+define("INCLUDE_PATH", realpath(__DIR__ . "/../src"));
 
 spl_autoload_register(function($class) {
     $file = INCLUDE_PATH . '/' . str_replace(array('\\', '_'), '/', $class) . ".php";
