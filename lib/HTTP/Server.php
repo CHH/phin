@@ -111,13 +111,12 @@ class Server
     protected $app;
 
     /**
-     * Name of the Net_Server Driver to use, defaults to the Sequential driver,
-     * as it is cross-platform. You may use the "Fork" Driver on *nix Systems for
+     * Name of the Net_Server Driver. You may use the "Fork" Driver on *nix Systems for
      * better Performance.
      *
      * @var string
      */
-    protected $driverName = "Sequential";
+    protected $driverName = "Fork";
 
     /**
      * Constructor
@@ -128,6 +127,14 @@ class Server
     {
         if ($config) {
             $this->setConfig($config);
+        }
+
+        /*
+         * Use the Sequential driver by default on Windows, because
+         * PCNTL, and therefore Forking, is not supported on Windows.
+         */
+        if (strtoupper(substr(PHP_OS, 0, 3)) == "WIN") {
+            $this->driverName = "Sequential";
         }
     }
 
