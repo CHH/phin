@@ -21,6 +21,7 @@ class Env extends \ArrayObject
             "SERVER_NAME" => "",
             "SERVER_PORT" => "",
             "server.url_scheme" => "http",
+            "server.input" => ""
         );
 
         parent::__construct($env);
