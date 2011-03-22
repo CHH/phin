@@ -18,16 +18,14 @@ $server->run(function($env) {
     $body[] = "<!DOCTYPE html>";
     $body[] = "<html><head></head><body>";
     $body[] = "<h1>It Works</h1>";
+
+    $body[] = "<h2>Environment</h2>";
     $body[] = "<pre>" . print_r($env, true). "</pre>";
 
-    $body[] = <<<HTML
-        <form method="post" action="/">
-            <input name="foo" placeholder="Type something">
-            <input type="submit" value="Submit">
-        </form>
-HTML;
-
-    $body[] = "<pre>" . stream_get_contents($env["server.input"]) . "</pre>";
+    if ($env->getRequestMethod() == "POST" or $env->getRequestMethod() == "PUT") {
+        $body[] = "<h2>Request Body</h2>";
+        $body[] = "<pre>" . stream_get_contents($env["server.input"]) . "</pre>";
+    }
 
     $body[] = "</body></html>";
 
