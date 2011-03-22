@@ -1,4 +1,17 @@
 h1. HTTP_Server, a simple Web-Server written in PHP
 
-h2. Usage
+h2. For what do I need this?
+
+The possibilities are not obvious, though there are some Use-Cases for it:
+ * You want to create a simple Web-Service with your Know-How of PHP and minimal Abstractions over HTTP
+ * You want to mock a Web-Service and need a convenient Web-Server which also can run Assertions
+ * You want a local Development Server without the Setup hassle, which Apache brings
+
+h2. Requirements
+
+HTTP_Server has following requirements:
+ * PHP 5.3.x, _for stable, long running scripts_
+ * Sockets enabled in PHP, though this should be on by default
+ * If you're on *nix, the PCNTL Extension is a good Idea, as it provides better Performance
+ * PEAR's Net_Server
 
