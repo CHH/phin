@@ -133,7 +133,7 @@ class Server
 
         /*
          * Use the Sequential driver by default on Windows, because
-         * PCNTL, and therefore Forking, is not supported on Windows.
+         * PCNTL (and therefore Forking) is not supported on Windows.
          */
         if (strtoupper(substr(PHP_OS, 0, 3)) == "WIN") {
             $this->driverName = "Sequential";
