@@ -7,7 +7,7 @@
  * @license MIT License
  * @copyright (c) 2011 Christoph Hochstrasser
  */
-namespace HTTP\Server;
+namespace \Spark\Http\Server;
 
 class Env extends \ArrayObject
 {

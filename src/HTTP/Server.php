@@ -7,13 +7,13 @@
  * @copyright (c) 2011 Christoph Hochstrasser
  */
 
-namespace HTTP;
+namespace Spark\Http;
 
 require_once "Net/Server.php";
 
 use Net_Server,
     Net_Server_Driver,
-    HTTP\Server\Env;
+    \Spark\Http\Server\Env;
 
 class Server
 {
@@ -91,7 +91,7 @@ class Server
      * @var array
      */
     protected $defaultHeaders = array(
-        "x-powered-by" => "PEAR/HTTP_Server2",
+        "x-powered-by" => "Spark_HTTP_Server2",
         "connection" => "close"
     );
 
