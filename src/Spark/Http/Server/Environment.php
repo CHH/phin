@@ -7,9 +7,9 @@
  * @license MIT License
  * @copyright (c) 2011 Christoph Hochstrasser
  */
-namespace \Spark\Http\Server;
+namespace Spark\Http\Server;
 
-class Env extends \ArrayObject
+class Environment extends \ArrayObject
 {
     function __construct()
     {

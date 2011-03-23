@@ -17,6 +17,6 @@ interface Parser
      * @param  string $raw Raw HTTP Message
      * @param  \HTTP\Server\Env $env
      */
-    function parse($raw, \Spark\Http\Server\Env $env);
+    function parse($raw, \Spark\Http\Server\Environment $env);
 }
 

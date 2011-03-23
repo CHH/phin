@@ -1,0 +1,8 @@
+<phpunit bootstrap="./tests/bootstrap.php">
+    <testsuites>
+        <testsuite name="Spark_Http_Server_UnitTests">
+            <directory>./tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
+

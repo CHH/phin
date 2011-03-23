@@ -2,9 +2,11 @@
 
 namespace Spark\Http\Server\Request;
 
+use \Spark\Http\Server\Environment;
+
 class StandardParser implements Parser
 {
-    function parse($raw, \Spark\Http\Server\Env $env)
+    function parse($raw, Environment $env)
     {
         $raw = trim($raw);
         $lines = explode("\r\n", $raw);
@@ -43,7 +45,7 @@ class StandardParser implements Parser
         return $env;
     }
 
-    protected function parseRequestUri($uri, \HTTP\Server\Env $env)
+    protected function parseRequestUri($uri, Environment $env)
     {
         if (!preg_match("'([^?]*)(?:\?([^#]*))?(?:#.*)? *'", $uri, $matches)) {
             return false;

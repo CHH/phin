@@ -13,7 +13,7 @@ require_once "Net/Server.php";
 
 use Net_Server,
     Net_Server_Driver,
-    \Spark\Http\Server\Env;
+    \Spark\Http\Server\Environment;
 
 class Server
 {
@@ -101,7 +101,7 @@ class Server
     protected $httpVersion = "1.1";
 
     /**
-     * @var \HTTP\Server\Env\Parser
+     * @var \HTTP\Server\Server\Reqest\Parser
      */
     protected $parser;
 
@@ -144,7 +144,7 @@ class Server
      * Sets a callback which should be run on every request and gets passed an
      * Environment as first argument
      *
-     * The callback should have the signature: <code>function(\HTTP\Server\Env $env);</code>
+     * The callback should have the signature: <code>function(\Spark\Http\Server\Environment $env);</code>
      * The callback should return in the form of:
      * <code>array("status" => $statusCode, "body" => $responseBody, $headers => $arrayOfResponseHeaders)</code>
      *
@@ -184,7 +184,7 @@ class Server
     function onReceiveData($client = 0, $rawMessage)
     {
         try {
-            $env = new Env;
+            $env = new Environment;
             $env->setServerName($this->host);
             $env->setServerPort($this->port);
 
@@ -226,7 +226,7 @@ class Server
      * @param int $client ID of the Client
      * @param array $response The Response array,
      */
-    protected function sendResponse($client = 0, Server\Env $env, array $response)
+    protected function sendResponse($client = 0, Environment $env, array $response)
     {
         $status  = empty($response[0]) ? 200     : $response[0];
         $headers = empty($response[1]) ? array() : $response[1];
@@ -361,7 +361,7 @@ class Server
      * @param  Server\Env\Parser $parser
      * @return Server
      */
-    function setParser(Server\Env\Parser $parser)
+    function setParser(Server\Request\Parser $parser)
     {
         $this->parser = $parser;
         return $this;
@@ -399,7 +399,7 @@ class Server
      * @param int $clientId
      * @param Server\Env $env Server Environment Variables
      */
-    protected function parseRequestBody($clientId = 0, \HTTP\Server\Env $env)
+    protected function parseRequestBody($clientId = 0, Environment $env)
     {
         $driver = $this->getDriver();
         $socket = $driver->clientFD[$clientId];
