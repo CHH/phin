@@ -245,9 +245,6 @@ class Server
         $format = ini_get('y2k_compliance') ? 'D, d M Y' : 'l, d-M-y';
         $headers["Date"] = gmdate($format .' H:i:s \G\M\T', time());
 
-        if ("HEAD" == $env->getRequestMethod()) {
-            $body = null;
-        }
 
         /*
          * Build headers for message body
@@ -263,6 +260,10 @@ class Server
                     return $sum + strlen($value);
                 }, 0);
             }
+        }
+        
+        if ("HEAD" == $env->getRequestMethod()) {
+            $body = null;
         }
         
         // Send headers
