@@ -144,9 +144,10 @@ class Server
      * Sets a callback which should be run on every request and gets passed an
      * Environment as first argument
      *
-     * The callback should have the signature: <code>function(\Spark\Http\Server\Environment $env);</code>
+     * The callback should have the signature: 
+     * <code>function(\Spark\Http\Server\Environment $env);</code>
      * The callback should return in the form of:
-     * <code>array("status" => $statusCode, "body" => $responseBody, $headers => $arrayOfResponseHeaders)</code>
+     * <code>array($status, $arrayOfResponseHeaders, $body)</code>
      *
      * @param  callback $callback
      * @return Server
@@ -263,14 +264,14 @@ class Server
                 }, 0);
             }
         }
-
+        
         // Send headers
         foreach ($headers as $header => $value) {
             $header = $this->normalizeHeader($header);
             $driver->sendData($client, sprintf("%s: %s\r\n", $header, $value));
         }
-
-        $driver->sendData($client, "\r\n\r\n");
+        
+        $driver->sendData($client, $headers ? "\r\n" : "\r\n\r\n");
 
         // Send the body
         if (is_string($body)) {

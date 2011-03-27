@@ -47,10 +47,17 @@ class StandardParser implements Parser
 
     protected function parseRequestUri($uri, Environment $env)
     {
+        // TODO: Revise this Regular Expression, as it does not recognize more than
+        // one url param, e.g. if URL is "/foo/bar.html?foo=bar&bar=baz" then
+        // it only captures "foo=bar" and not "foo=bar&bar=baz"
         if (!preg_match("'([^?]*)(?:\?([^#]*))?(?:#.*)? *'", $uri, $matches)) {
             return false;
         }
-        $env->setPathInfo($matches[1]);
+        
+        $path = $matches[1];
+        
+        $env->setPathInfo(dirname($path));
+        $env->setScriptName(basename($path));
         $env->setQueryString(isset($matches[2]) ? $matches[2] : "");
     }
 }
