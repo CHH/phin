@@ -166,17 +166,24 @@ class Server
     /**
      * Server starts listening for requests
      */
-    function start()
+    function listen()
     {
-        $this->getDriver()->start();
+        $this->driver = Net_Server::create($this->driverName, $this->host, $this->port);
+        $this->driver->setEndCharacter("\r\n\r\n");
+        $this->driver->setCallbackObject($this);
+        
+        $this->driver->start();
     }
 
     /**
      * Stop the server from listening for requests
      */
-    function shutdown()
+    function stopListening()
     {
-        $this->getDriver()->shutDown();
+        if (!$this->driver instanceof \Net_Server_Driver) {
+            throw new Server\UnexpectedValueException("Server was not started");
+        }
+        $this->driver->shutDown();
     }
 
     /**
@@ -218,7 +225,7 @@ class Server
             print $e;
         }
         $this->sendResponse($client, $env, $response);
-        $this->getDriver()->closeConnection($client);
+        $this->driver->closeConnection($client);
     }
 
     /**
@@ -234,7 +241,7 @@ class Server
         $body    = empty($response[2]) ? ''      : $response[2];
 
         $headers = array_merge($this->defaultHeaders, $headers);
-        $driver  = $this->getDriver();
+        $driver  = $this->driver;
 
         // Send Response head
         $driver->sendData($client, sprintf(
@@ -319,32 +326,6 @@ class Server
     }
 
     /**
-     * Retrieve an instance of our TCP/IP Server stack
-     *
-     * @return Net_Server_Driver
-     */
-    function getDriver()
-    {
-        if (null === $this->driver) {
-            $this->driver = Net_Server::create($this->driverName, $this->host, $this->port);
-            $this->driver->setEndCharacter("\r\n\r\n");
-            $this->driver->setCallbackObject($this);
-        }
-        return $this->driver;
-    }
-
-    /**
-     * Set the driver used to communicate with the client
-     *
-     * @param  Net_Server_Driver
-     * @return Server
-     */
-    function setDriver(Net_Server_Driver $driver)
-    {
-        $this->driver = $driver;
-    }
-
-    /**
      * Returns the request parser, uses by default the Pecl_Http Extension
      *
      * @return Server\Request\Parser
@@ -403,7 +384,7 @@ class Server
      */
     protected function parseRequestBody($clientId = 0, Environment $env)
     {
-        $driver = $this->getDriver();
+        $driver = $this->driver;
         $socket = $driver->clientFD[$clientId];
 
         if (empty($env["HTTP_CONTENT_LENGTH"])) {

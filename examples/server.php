@@ -32,5 +32,5 @@ $server->run(function($env) {
     return array(200, array(), $body);
 });
 
-$server->start();
+$server->listen();
 
