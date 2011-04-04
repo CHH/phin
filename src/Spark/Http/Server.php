@@ -13,6 +13,7 @@ require_once "Net/Server.php";
 
 use Net_Server,
     Net_Server_Driver,
+    DateTime,
     \Spark\Http\Server\Environment;
 
 class Server
@@ -75,6 +76,8 @@ class Server
 
     /**
      * Hostname or IP Address for listening
+     *
+     * @var string
      */
     protected $host = "127.0.0.1";
 
@@ -91,8 +94,8 @@ class Server
      * @var array
      */
     protected $defaultHeaders = array(
-        "x-powered-by" => "Spark_HTTP_Server2",
-        "connection" => "close"
+        "x-powered-by" => "Spark_Http_Server",
+        "connection"   => "close"
     );
 
     /**
@@ -101,7 +104,9 @@ class Server
     protected $httpVersion = "1.1";
 
     /**
-     * @var \HTTP\Server\Server\Reqest\Parser
+     * Parser for the request HTTP message
+     * 
+     * @var \HTTP\Server\Server\Request\Parser
      */
     protected $parser;
 
@@ -231,8 +236,9 @@ class Server
     /**
      * Sends the response
      *
-     * @param int $client ID of the Client
-     * @param array $response The Response array,
+     * @param int         $client   ID of the Client
+     * @param Environment $env      The request environment
+     * @param array       $response The Response, an array of ($status, $headers, $body)
      */
     protected function sendResponse($client = 0, Environment $env, array $response)
     {
@@ -249,9 +255,10 @@ class Server
         ));
 
         // Append date/time
-        $format = ini_get('y2k_compliance') ? 'D, d M Y' : 'l, d-M-y';
-        $headers["Date"] = gmdate($format .' H:i:s \G\M\T', time());
-
+        $date = new DateTime;
+        $date->setTimezone(new \DateTimeZone("GMT"));
+        
+        $headers["Date"] = $date->format(DateTime::RFC1123);
 
         /*
          * Build headers for message body
