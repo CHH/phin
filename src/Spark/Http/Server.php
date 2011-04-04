@@ -249,12 +249,12 @@ class Server
         $headers = array_merge($this->defaultHeaders, $headers);
         $driver  = $this->driver;
 
-        // Send Response head
+        // Send message head
         $driver->sendData($client, sprintf(
             "HTTP/%s %d %s\r\n", $this->httpVersion, $status, $this->resolveStatusCode($status)
         ));
 
-        // Append date/time
+        // Append GMT date/time
         $date = new DateTime;
         $date->setTimezone(new \DateTimeZone("GMT"));
         
@@ -265,7 +265,7 @@ class Server
          */
         if (!empty($body)) {
             // Default Content-Type to text/html
-            !empty($headers["Content-Type"]) ?: $headers["Content-Type"] = "text/html";
+            isset($headers["Content-Type"]) ?: $headers["Content-Type"] = "text/html";
 
             if (is_string($body)) {
                 $headers["Content-Length"] = strlen($body);
