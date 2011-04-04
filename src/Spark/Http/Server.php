@@ -394,6 +394,8 @@ class Server
 
         $bufferSize = 1024;
         $data = $driver->_readLeftOver;
+        
+        $driver->_readLeftOver = null;
 
         // Read the rest of the body directly from the socket if not in _readLeftOver
         while (strlen($data) < $contentLength) {
