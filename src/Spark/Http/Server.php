@@ -293,7 +293,6 @@ class Server
             $driver->sendData($client, $body);
 
         } else if (is_array($body)) {
-            var_dump($body);
             $driver->sendData($client, join($body, ""));
 
         // Send the file if the body is a resource handle
