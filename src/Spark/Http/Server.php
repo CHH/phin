@@ -171,9 +171,11 @@ class Server
     /**
      * Server starts listening for requests
      */
-    function listen()
+    function listen($port = null)
     {
-        $this->driver = Net_Server::create($this->driverName, $this->host, $this->port);
+        $port = $port ?: $this->port;
+        
+        $this->driver = Net_Server::create($this->driverName, $this->host, $port);
         $this->driver->setEndCharacter("\r\n\r\n");
         $this->driver->setCallbackObject($this);
         
