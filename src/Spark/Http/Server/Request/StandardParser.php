@@ -16,6 +16,7 @@ class StandardParser implements Parser
         }
 
         $env->setRequestMethod($matches[1]);
+        $env->setRequestUri($matches[2]);
         $this->parseRequestUri($matches[2], $env);
         $version = $matches[3];
 

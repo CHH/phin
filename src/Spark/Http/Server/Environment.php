@@ -18,6 +18,7 @@ class Environment extends \ArrayObject
             "PATH_INFO" => '/',
             "QUERY_STRING" => '',
             "REQUEST_METHOD" => "GET",
+            "REQUEST_URI" => "/",
             "SERVER_NAME" => "",
             "SERVER_PORT" => "",
             "server.url_scheme" => "http",
@@ -84,6 +85,16 @@ class Environment extends \ArrayObject
         return $this["SCRIPT_NAME"];
     }
 
+    function setRequestUri($uri)
+    {
+        $this["REQUEST_URI"] = $uri;
+    }
+
+    function getRequestUri()
+    {
+        return $this["REQUEST_URI"];
+    }
+    
     function setRequestMethod($method)
     {
         $method = strtoupper($method);

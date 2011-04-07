@@ -207,7 +207,7 @@ class Server
             // Retrieve the Request Body on POST or PUT requests
             $method = $env->getRequestMethod();
             if ("POST" == $method or "PUT" == $method) {
-                $this->parseRequestBody($client, $env);
+                $this->parseEntityBody($client, $env);
             }
 
             // Call the Request Handler with the Server Environment as sole argument
@@ -261,7 +261,7 @@ class Server
         $headers["Date"] = $date->format(DateTime::RFC1123);
 
         /*
-         * Build headers for message body
+         * Build headers for entity body
          */
         if (!empty($body)) {
             // Default Content-Type to text/html
@@ -293,6 +293,7 @@ class Server
             $driver->sendData($client, $body);
 
         } else if (is_array($body)) {
+            var_dump($body);
             $driver->sendData($client, join($body, ""));
 
         // Send the file if the body is a resource handle
@@ -389,7 +390,7 @@ class Server
      * @param int $clientId
      * @param Server\Env $env Server Environment Variables
      */
-    protected function parseRequestBody($clientId = 0, Environment $env)
+    protected function parseEntityBody($clientId = 0, Environment $env)
     {
         $driver = $this->driver;
         $socket = $driver->clientFD[$clientId];
