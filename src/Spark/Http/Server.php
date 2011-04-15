@@ -14,7 +14,8 @@ require_once "Net/Server.php";
 use Net_Server,
     Net_Server_Driver,
     DateTime,
-    \Spark\Http\Server\Environment;
+    \Spark\Http\Server\Environment,
+    \Spark\Http\Server\Request\Handler;
 
 class Server
 {
@@ -73,7 +74,9 @@ class Server
 
     /** @var Net_Server_Driver */
     protected $driver;
-
+    
+    protected $docRoot;
+    
     /**
      * Hostname or IP Address for listening
      *
@@ -159,12 +162,7 @@ class Server
      */
     function run($callback)
     {
-        if (!is_callable($callback)) {
-            throw new Server\InvalidArgumentException(sprintf(
-                "run() expects a valid callback, %s given.", gettype($callback)
-            ));
-        }
-        $this->handler = $callback;
+        $this->handler = new Handler($callback);
         return $this;
     }
 
@@ -200,27 +198,26 @@ class Server
     {
         try {
             $env = new Environment;
-            $env->setServerName($this->host);
-            $env->setServerPort($this->port);
-
+            $env->set("SERVER_NAME", $this->host);
+            $env->set("SERVER_PORT", $this->port);
+            $env->set("DOCUMENT_ROOT", $this->docRoot);
+            
+            $clientInfo = $this->driver->getClientInfo();
+            $env->set("REMOTE_ADDR", $clientInfo["host"]);
+            $env->set("REMOTE_PORT", $clientInfo["port"]);
+            $env->set("REQUEST_TIME", $clientInfo["connectOn"]);
+            
             // Parse Request Message Head
             $this->getParser()->parse($rawMessage, $env);
 
             // Retrieve the Request Body on POST or PUT requests
-            $method = $env->getRequestMethod();
+            $method = $env->get("REQUEST_METHOD");
             if ("POST" == $method or "PUT" == $method) {
                 $this->parseEntityBody($client, $env);
             }
 
-            // Call the Request Handler with the Server Environment as sole argument
-            if (is_callable($this->handler)) {
-                $response = call_user_func($this->handler, $env);
-            } else {
-                $response = array(404);
-            }
-
-            if (false === $response) {
-                $response = array(500);
+            if (null !== $this->handler) {
+                $this->handler->call($env);
             }
         } catch (Server\MalformedMessageException $e) {
             print $e->getPrevious();
@@ -278,7 +275,7 @@ class Server
             }
         }
         
-        if ("HEAD" == $env->getRequestMethod()) {
+        if ("HEAD" == $env->get("REQUEST_METHOD")) {
             $body = null;
         }
         
@@ -318,7 +315,15 @@ class Server
     {
         $this->port = $port;
     }
-
+    
+    function setDocRoot($docRoot)
+    {
+        if (!is_dir($docRoot)) {
+            throw new Server\InvalidArgumentException("Document root does not exist");
+        }
+        $this->docRoot = $docRoot;
+    }
+    
     function setHttpVersion($version)
     {
         $this->httpVersion = $version;
@@ -430,7 +435,7 @@ class Server
             ));
         }
 
-        $env->setInputStream(fopen("data://text/plain," . $data, "rb"));
+        $env->set("server.input", fopen("data://text/plain," . $data, "rb"));
     }
 
     protected function normalizeHeader($header)

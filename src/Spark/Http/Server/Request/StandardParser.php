@@ -15,8 +15,9 @@ class StandardParser implements Parser
             return false;
         }
 
-        $env->setRequestMethod($matches[1]);
-        $env->setRequestUri($matches[2]);
+        $env->set("REQUEST_METHOD", $matches[1]);
+        $env->set("REQUEST_URI", $matches[2]);
+        
         $this->parseRequestUri($matches[2], $env);
         $version = $matches[3];
 
@@ -39,8 +40,8 @@ class StandardParser implements Parser
 
         if (!empty($env["HTTP_HOST"])) {
             list($host, $port) = explode(':', $env["HTTP_HOST"]);
-            $env->setServerName($host);
-            $env->setServerPort($port);
+            $env->set("SERVER_NAME", $host);
+            $env->set("SERVER_PORT", $port);
         }
 
         return $env;
@@ -57,9 +58,9 @@ class StandardParser implements Parser
         
         $path = $matches[1];
         
-        $env->setPathInfo(dirname($path));
-        $env->setScriptName(basename($path));
-        $env->setQueryString(isset($matches[2]) ? $matches[2] : "");
+        $env->set("PATH_INFO", dirname($path));
+        $env->set("SCRIPT_NAME", basename($path));
+        $env->set("QUERY_STRING", isset($matches[2]) ? $matches[2] : "");
     }
 }
 
