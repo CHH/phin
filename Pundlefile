@@ -8,3 +8,13 @@ dependencies:
         type: "pear"
         package: "Net_Server"
         version: "~1.0.2"
+    -
+        type: "repository"
+        vcs: "git"
+        repository: "git://github.com/symfony/Process.git"
+        target: "vendor/Symfony/Component/Process"
+    -
+        type: "repository"
+        vcs: "git"
+        repository: "git://github.com/symfony/ClassLoader.git"
+        target: "vendor/Symfony/Component/ClassLoader"
