@@ -14,68 +14,17 @@ require_once "Net/Server.php";
 use Net_Server,
     Net_Server_Driver,
     DateTime,
-    \Spark\Http\Server\Environment,
-    \Spark\Http\Server\Request\Handler;
+    Spark\Http\Server\Environment,
+    Spark\Http\Server\Request\Handler,
+    Spark\Http\Server\HttpStatus;
 
 class Server
-{
-    /**
-     * list of HTTP status codes
-     * @var array $_statusCodes
-     */
-    protected $statusCodes = array(
-        100 => 'Continue',
-        101 => 'Switching Protocols',
-        102 => 'Processing',
-        200 => 'OK',
-        201 => 'Created',
-        202 => 'Accepted',
-        203 => 'Non-Authoriative Information',
-        204 => 'No Content',
-        205 => 'Reset Content',
-        206 => 'Partial Content',
-        207 => 'Multi-Status',
-        300 => 'Multiple Choices',
-        301 => 'Moved Permanently',
-        302 => 'Found',
-        303 => 'See Other',
-        304 => 'Not Modified',
-        305 => 'Use Proxy',
-        307 => 'Temporary Redirect',
-        400 => 'Bad Request',
-        401 => 'Unauthorized',
-        402 => 'Payment Required',
-        403 => 'Forbidden',
-        404 => 'Not Found',
-        405 => 'Method Not Allowed',
-        406 => 'Not Acceptable',
-        407 => 'Proxy Authentication Required',
-        408 => 'Request Time-out',
-        409 => 'Conflict',
-        410 => 'Gone',
-        411 => 'Length Required',
-        412 => 'Precondition Failed',
-        413 => 'Request Entity Too Large',
-        414 => 'Request-URI Too Large',
-        415 => 'Unsupported Media Type',
-        416 => 'Requested range not satisfiable',
-        417 => 'Expectation Failed',
-        418 => 'I\'m a teapot',
-        422 => 'Unprocessable Entity',
-        423 => 'Locked',
-        424 => 'Failed Dependency',
-        500 => 'Internal Server Error',
-        501 => 'Not Implemented',
-        502 => 'Overloaded',
-        503 => 'Gateway Timeout',
-        505 => 'HTTP Version not supported',
-        507 => 'Insufficient Storage'
-    );
-
+{   
     /** @var Net_Server_Driver */
     protected $driver;
-    
-    protected $docRoot;
+
+    /** @var string */
+    protected $documentRoot;
     
     /**
      * Hostname or IP Address for listening
@@ -100,16 +49,11 @@ class Server
         "x-powered-by" => "Spark_Http_Server",
         "connection"   => "close"
     );
-
-    /**
-     * HTTP Protocol version
-     */
-    protected $httpVersion = "1.1";
-
+    
     /**
      * Parser for the request HTTP message
      * 
-     * @var \HTTP\Server\Server\Request\Parser
+     * @var \Spark\Http\Server\Request\Parser
      */
     protected $parser;
 
@@ -119,7 +63,7 @@ class Server
      * @var callback
      */
     protected $handler;
-
+    
     /**
      * Name of the Net_Server Driver. You may use the "Fork" Driver on *nix Systems for
      * better Performance.
@@ -128,23 +72,25 @@ class Server
      */
     protected $driverName = "Fork";
 
+    protected $debugMode = false;
+    
     /**
      * Constructor
      *
      * @param array $config Array of options
      */
     function __construct(array $config = array())
-    {
-        if ($config) {
-            $this->setConfig($config);
-        }
-
+    {   
         /*
          * Use the Sequential driver by default on Windows, because
-         * PCNTL (and therefore Forking) is not supported on Windows.
+         * PCNTL (and therefore Process Forking) is not supported on Windows.
          */
         if (strtoupper(substr(PHP_OS, 0, 3)) == "WIN") {
             $this->driverName = "Sequential";
+        }
+        
+        if ($config) {
+            $this->setConfig($config);
         }
     }
 
@@ -176,6 +122,7 @@ class Server
         $this->driver = Net_Server::create($this->driverName, $this->host, $port);
         $this->driver->setEndCharacter("\r\n\r\n");
         $this->driver->setCallbackObject($this);
+        $this->driver->setDebugMode($this->debugMode);
         
         $this->driver->start();
     }
@@ -186,26 +133,33 @@ class Server
     function stopListening()
     {
         if (!$this->driver instanceof \Net_Server_Driver) {
-            throw new Server\UnexpectedValueException("Server was not started");
+            throw new Server\RuntimeException("Server was not started");
         }
         $this->driver->shutDown();
     }
 
+    protected function createEnvironment($client = 0)
+    {
+        $env = new Environment;
+        $env->set("SERVER_NAME", $this->host);
+        $env->set("SERVER_PORT", $this->port);
+        $env->set("DOCUMENT_ROOT", $this->documentRoot);
+        
+        $clientInfo = $this->driver->getClientInfo($client);
+        $env->set("REMOTE_ADDR", $clientInfo["host"]);
+        $env->set("REMOTE_PORT", $clientInfo["port"]);
+        $env->set("REQUEST_TIME", $clientInfo["connectOn"]);
+
+        return $env;
+    }
+    
     /**
      * Gets called by the driver when a request gets in
      */
     function onReceiveData($client = 0, $rawMessage)
     {
         try {
-            $env = new Environment;
-            $env->set("SERVER_NAME", $this->host);
-            $env->set("SERVER_PORT", $this->port);
-            $env->set("DOCUMENT_ROOT", $this->docRoot);
-            
-            $clientInfo = $this->driver->getClientInfo();
-            $env->set("REMOTE_ADDR", $clientInfo["host"]);
-            $env->set("REMOTE_PORT", $clientInfo["port"]);
-            $env->set("REQUEST_TIME", $clientInfo["connectOn"]);
+            $env = $this->createEnvironment($client);
             
             // Parse Request Message Head
             $this->getParser()->parse($rawMessage, $env);
@@ -217,7 +171,7 @@ class Server
             }
 
             if (null !== $this->handler) {
-                $this->handler->call($env);
+                $response = $this->handler->call($env);
             }
         } catch (Server\MalformedMessageException $e) {
             print $e->getPrevious();
@@ -231,28 +185,39 @@ class Server
         $this->sendResponse($client, $env, $response);
         $this->driver->closeConnection($client);
     }
-
+    
     /**
      * Sends the response
      *
-     * @param int         $client   ID of the Client
-     * @param Environment $env      The request environment
-     * @param array       $response The Response, an array of ($status, $headers, $body)
+     * @param int          $client   ID of the Client
+     * @param Environment  $env      The request environment
+     * @param array|string $response The Response, an array of ($status, $headers, $body)
      */
-    protected function sendResponse($client = 0, Environment $env, array $response)
+    protected function sendResponse($client = 0, Environment $env, $response)
     {
-        $status  = empty($response[0]) ? 200     : $response[0];
-        $headers = empty($response[1]) ? array() : $response[1];
-        $body    = empty($response[2]) ? ''      : $response[2];
+        $driver = $this->driver;
 
-        $headers = array_merge($this->defaultHeaders, $headers);
-        $driver  = $this->driver;
+        // Handler returned simple response
+        if (is_array($response)) {
+            $status  = empty($response[0]) ? 200     : $response[0];
+            $headers = empty($response[1]) ? array() : $response[1];
+            $body    = empty($response[2]) ? ''      : $response[2];
 
+        // Handler returned raw response message, send and return early
+        } else if (is_string($response)) {
+            $this->driver->sendData($client, $response);
+            $this->driver->closeConnection($client);
+            return;
+        }
+
+        $headers = $this->normalizeHeaders($headers);
+        $status  = new HttpStatus($status);
+        
         // Send message head
         $driver->sendData($client, sprintf(
-            "HTTP/%s %d %s\r\n", $this->httpVersion, $status, $this->resolveStatusCode($status)
+            "HTTP/1.1 %s\r\n", $status
         ));
-
+        
         // Append GMT date/time
         $date = new DateTime;
         $date->setTimezone(new \DateTimeZone("GMT"));
@@ -279,20 +244,56 @@ class Server
             $body = null;
         }
         
+        $this->sendHeaders($client, $headers);
+        $driver->sendData($client, $headers ? "\r\n" : "\r\n\r\n");
+        
+        if ($body) {
+            $this->sendBody($client, $body);
+        }
+
+        $driver->closeConnection($client);
+    }
+
+    protected function normalizeHeaders(array $headers)
+    {
+        $normalize = function($header) {
+            $header = str_replace(array('-', '_'), ' ', $header);
+            $header = ucwords($header);
+            $header = str_replace(' ', '-', $header);
+            return $header;
+        };
+
+        $return = array();
+        
+        foreach ($headers as $header => &$value) {
+            $return[$normalize($header)] = $value;
+        }
+        return $return;
+    }
+    
+    protected function sendHeaders($client = 0, array $headers = array())
+    {
+        $driver  = $this->driver;
+        $headers = array_merge($this->defaultHeaders, $headers);
+
         // Send headers
         foreach ($headers as $header => $value) {
-            $header = $this->normalizeHeader($header);
             $driver->sendData($client, sprintf("%s: %s\r\n", $header, $value));
         }
-        
-        $driver->sendData($client, $headers ? "\r\n" : "\r\n\r\n");
+    }
 
+    protected function sendBody($client = 0, $body)
+    {
+        $driver = $this->driver;
+    
         // Send the body
         if (is_string($body)) {
             $driver->sendData($client, $body);
 
         } else if (is_array($body)) {
-            $driver->sendData($client, join($body, ""));
+            foreach ($body as $b) {
+                $driver->sendData($client, $b);
+            }
 
         // Send the file if the body is a resource handle
         } else if (is_resource($body)) {
@@ -302,8 +303,6 @@ class Server
             }
             fclose($body);
         }
-
-        $driver->closeConnection($client);
     }
 
     /**
@@ -315,18 +314,18 @@ class Server
     {
         $this->port = $port;
     }
+
+    function setDebugMode($debugMode = true)
+    {
+        $this->debugMode = $debugMode;
+    }
     
-    function setDocRoot($docRoot)
+    function setDocumentRoot($docRoot)
     {
         if (!is_dir($docRoot)) {
             throw new Server\InvalidArgumentException("Document root does not exist");
         }
-        $this->docRoot = $docRoot;
-    }
-    
-    function setHttpVersion($version)
-    {
-        $this->httpVersion = $version;
+        $this->documentRoot = $docRoot;
     }
 
     function setHost($host)
@@ -436,34 +435,6 @@ class Server
         }
 
         $env->set("server.input", fopen("data://text/plain," . $data, "rb"));
-    }
-
-    protected function normalizeHeader($header)
-    {
-        $header = str_replace(array('-', '_'), ' ', $header);
-        $header = ucwords($header);
-        $header = str_replace(' ', '-', $header);
-        return $header;
-    }
-
-    /**
-     * Returns the Message for the given HTTP Status Code
-      *
-     * @param  int $code
-     * @return string
-     */
-    protected function resolveStatusCode($code)
-    {
-        if (!is_numeric($code)) {
-            throw new Server\InvalidArgumentException(sprintf(
-                "Code must be a number, %s given", gettype($code)
-            ));
-        }
-
-        if (empty($this->statusCodes[$code])) {
-            throw new Server\InvalidArgumentException("Code $code is not defined");
-        }
-        return $this->statusCodes[$code];
     }
 }
 

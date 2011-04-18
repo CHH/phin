@@ -1,4 +1,11 @@
 <?php
+/**
+ * HTTP Request Parser
+ *
+ * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
+ * @license MIT License
+ * @copyright (c) Christoph Hochstrasser
+ */
 
 namespace Spark\Http\Server\Request;
 
@@ -15,8 +22,14 @@ class StandardParser implements Parser
             return false;
         }
 
+        $requestUri = $matches[2];
+
+        if (".." == substr($requestUri, 0, 2)) {
+            $requestUri = substr($requestUri, 2);
+        }
+        
         $env->set("REQUEST_METHOD", $matches[1]);
-        $env->set("REQUEST_URI", $matches[2]);
+        $env->set("REQUEST_URI", $requestUri);
         
         $this->parseRequestUri($matches[2], $env);
         $version = $matches[3];
@@ -49,18 +62,17 @@ class StandardParser implements Parser
 
     protected function parseRequestUri($uri, Environment $env)
     {
-        // TODO: Revise this Regular Expression, as it does not recognize more than
-        // one url param, e.g. if URL is "/foo/bar.html?foo=bar&bar=baz" then
-        // it only captures "foo=bar" and not "foo=bar&bar=baz"
-        if (!preg_match("'([^?]*)(?:\?([^#]*))?(?:#.*)? *'", $uri, $matches)) {
-            return false;
+        if (false !== $pos = strpos($uri, "?")) {
+            $uri = substr($uri, 0, $pos);
+            $env->set("QUERY_STRING", substr($uri, $pos + 1));
         }
         
-        $path = $matches[1];
+        if (false !== $pos = strpos($uri, "#")) {
+            $uri = substr($uri, 0, $pos);
+        }
         
-        $env->set("PATH_INFO", dirname($path));
-        $env->set("SCRIPT_NAME", basename($path));
-        $env->set("QUERY_STRING", isset($matches[2]) ? $matches[2] : "");
+        $env->set("PATH_INFO", dirname($uri));
+        $env->set("SCRIPT_NAME", basename($uri));
     }
 }
 

@@ -1,12 +1,14 @@
 <?php
 
-require_once realpath(__DIR__ . "/../vendor/Symfony/Component/UniversalClassLoader.php");
+define("VENDOR_PATH", realpath(__DIR__ . "/../vendor"));
 
-$classLoader = new \Symfony\Component\UniversalClassLoader;
+require_once VENDOR_PATH . "/Symfony/Component/ClassLoader/UniversalClassLoader.php";
+
+$classLoader = new \Symfony\Component\ClassLoader\UniversalClassLoader;
 
 $classLoader->registerNamespaces(array(
-    "Spark" => __DIR__,
-    "Symfony" => realpath(__DIR__ . "/../vendor")
+    "Spark"   => __DIR__,
+    "Symfony" => VENDOR_PATH
 ));
 
 $classLoader->register();
