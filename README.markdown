@@ -19,6 +19,6 @@ You need the following if you want to hack on Phin:
 
 Run the following command in your checkout of the Phin Source:
 
-```sh
+```bash
 pundle install
 ```
