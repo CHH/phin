@@ -1,6 +1,6 @@
 <?php
 
-namespace Spark\Http\Server;
+namespace Phin\Server;
 
 class HttpStatus
 {

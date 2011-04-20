@@ -2,10 +2,10 @@
 
 require_once realpath(__DIR__ . "/../") . "/src/_autoload.php";
 
-use Spark\Http\Server,
-    Spark\Http\Server\FileHandler;
+use Phin\Server,
+    Phin\Server\FileHandler;
 
-$server = new Spark\Http\Server(array(
+$server = new Phin\Server(array(
     "document_root" => __DIR__ . "/public"
 ));
 

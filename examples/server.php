@@ -4,7 +4,7 @@ define("INCLUDE_PATH", realpath(__DIR__ . "/../src"));
 
 require_once INCLUDE_PATH . "/_autoload.php";
 
-$server = new \Spark\Http\Server;
+$server = new \Phin\Server;
 
 $server->run(function($env) {
     $body = array();

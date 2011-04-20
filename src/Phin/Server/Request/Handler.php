@@ -1,9 +1,9 @@
 <?php
 
-namespace Spark\Http\Server\Request;
+namespace Phin\Server\Request;
 
-use Spark\Http\Server\InvalidArgumentException,
-    Spark\Http\Server\Environment;
+use Phin\Server\InvalidArgumentException,
+    Phin\Server\Environment;
 
 class Handler
 {

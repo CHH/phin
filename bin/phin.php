@@ -1,13 +1,13 @@
 <?php
 
-namespace Spark\Http;
+namespace Phin;
 
 require_once realpath(__DIR__ . "/../") . "/src/_autoload.php";
 
-use \Spark\Http\Server,
-    \Spark\Http\Server\HandlerQueue,
-    \Spark\Http\Server\FileHandler,
-    \Spark\Http\Server\CgiHandler;
+use \Phin\Server,
+    \Phin\Server\HandlerQueue,
+    \Phin\Server\FileHandler,
+    \Phin\Server\CgiHandler;
 
 class PhpServer
 {
@@ -39,7 +39,7 @@ class PhpServer
      */
     protected function findPhpCgi()
     {
-        $suffix;
+        $suffix = '';
     
         if ("WIN" == strtoupper(substr(PHP_OS, 0, 3))) {
             $searchPaths = array(

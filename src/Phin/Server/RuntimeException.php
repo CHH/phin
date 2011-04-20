@@ -7,7 +7,7 @@
  * @license MIT License
  * @copyright (c) 2011 Christoph Hochstrasser
  */
-namespace Spark\Http\Server;
+namespace Phin\Server;
 
 class RuntimeException
     extends \RuntimeException

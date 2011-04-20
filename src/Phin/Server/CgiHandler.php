@@ -7,7 +7,7 @@
  * @copyright (c) Christoph Hochstrasser
  */
 
-namespace Spark\Http\Server;
+namespace Phin\Server;
 
 use Symfony\Component\Process\Process;
 

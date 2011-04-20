@@ -7,9 +7,9 @@
  * @copyright (c) Christoph Hochstrasser
  */
 
-namespace Spark\Http\Server\Request;
+namespace Phin\Server\Request;
 
-use \Spark\Http\Server\Environment;
+use \Phin\Server\Environment;
 
 class StandardParser implements Parser
 {

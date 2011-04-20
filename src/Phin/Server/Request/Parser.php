@@ -2,12 +2,12 @@
 /**
  * Interface for HTTP Message parsers
  *
- * @package Spark_Http_Server
+ * @package Phin
  * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
  * @license MIT License
  * @copyright (c) 2011 Christoph Hochstrasser
  */
-namespace Spark\Http\Server\Request;
+namespace Phin\Server\Request;
 
 interface Parser
 {
@@ -17,6 +17,6 @@ interface Parser
      * @param  string $raw Raw HTTP Message
      * @param  \HTTP\Server\Env $env
      */
-    function parse($raw, \Spark\Http\Server\Environment $env);
+    function parse($raw, \Phin\Server\Environment $env);
 }
 

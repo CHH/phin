@@ -1,8 +1,8 @@
 <?php
 
-namespace Spark\Test\Http;
+namespace Phin\Test;
 
-use Spark\Http\Server;
+use Phin\Server;
 
 class ServerTest extends \PHPUnit_Framework_TestCase
 {

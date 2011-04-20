@@ -2,21 +2,22 @@
 /**
  * A simple HTTP Server with a Rack-like Protocol
  *
+ * @package Phin
  * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
  * @license MIT License
  * @copyright (c) 2011 Christoph Hochstrasser
  */
 
-namespace Spark\Http;
+namespace Phin;
 
 require_once "Net/Server.php";
 
 use Net_Server,
     Net_Server_Driver,
     DateTime,
-    Spark\Http\Server\Environment,
-    Spark\Http\Server\Request\Handler,
-    Spark\Http\Server\HttpStatus;
+    Phin\Server\Environment,
+    Phin\Server\Request\Handler,
+    Phin\Server\HttpStatus;
 
 class Server
 {   
@@ -53,7 +54,7 @@ class Server
     /**
      * Parser for the request HTTP message
      * 
-     * @var \Spark\Http\Server\Request\Parser
+     * @var \Phin\Server\Request\Parser
      */
     protected $parser;
 
@@ -99,7 +100,7 @@ class Server
      * Environment as first argument
      *
      * The callback should have the signature: 
-     * <code>function(\Spark\Http\Server\Environment $env);</code>
+     * <code>function(\Phin\Server\Environment $env);</code>
      * The callback should return in the form of:
      * <code>array($status, $arrayOfResponseHeaders, $body)</code>
      *
