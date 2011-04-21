@@ -12,7 +12,7 @@ class SignalSlot
         $this->listeners = new \SplQueue;
     }
 
-    function connect($listener)
+    function bind($listener)
     {
         if (!is_callable($listener)) {
             throw new InvalidArgumentException(sprintf(
