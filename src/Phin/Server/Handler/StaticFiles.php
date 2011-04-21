@@ -34,7 +34,7 @@ class StaticFiles
         $file    = $docRoot . $env["PATH_INFO"] . '/' . $env["SCRIPT_NAME"];
         
         if (!is_file($file)) {
-            return array(404);
+            return false;
         }
         if (!is_readable($file)) {
             return array(500);

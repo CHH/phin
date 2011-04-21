@@ -20,15 +20,12 @@ class PhpServer
         ));
 
         $cgiHandler = new Cgi($this->findPhpCgi(), array(
-            "SCRIPT_FILENAME" => $root . "/examples/hello_world.php",
-            "TMP" => "C:\\temp"
+            "SCRIPT_FILENAME" => $root . "/examples/hello_world.php"
         ));
         
-        $handlers = new HandlerQueue;
-        $handlers->add(new StaticFiles)
-                 ->add($cgiHandler);
-
-        $server->run($handlers);
+        $server->run(new StaticFiles)
+               ->run($cgiHandler);
+        
         $server->listen();
     }
 

@@ -2,14 +2,12 @@
 T O D O
 =======
 
-[ ] Temp Directory handled by Server
-[ ] Implement Server Error handling (Logging to file? Logging to Console?)
-[ ] More Separation of concerns
-        * Connection Class
-        * Response Class
-[ ] Signal-Slot based Architecture?
-[ ] Unit Tests
-[ ] More Speed for PHP CGI -> Use FastCGI handler
-[ ] The Need for Speed
-[ ] PHAR Archive as server executable (maybe should be separate Project)
-[ ] Clustering Support
+* Implement Server Error handling (Logging to file? Logging to Console?)
+* More Separation of concerns
+    * Response Class
+* Signal-Slot based Architecture?
+* Unit Tests
+* More Speed for PHP CGI -> Use FastCGI handler
+* The Need for Speed
+* PHAR Archive as server executable (maybe should be separate Project)
+* Clustering Support

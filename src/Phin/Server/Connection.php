@@ -46,10 +46,8 @@ class Connection
         "connection"   => "close"
     );
     
-    function __construct(Driver $driver, Config $config = null)
+    function __construct(Config $config = null)
     {
-        $this->driver = $driver;
-        
         empty($config) ?: $this->setConfig($config);
         $this->setParser(new Request\StandardParser);
         
@@ -61,6 +59,12 @@ class Connection
     function setConfig(Config $config)
     {
         $this->config = $config;
+        return $this;
+    }
+
+    function setDriver(Driver $driver)
+    {
+        $this->driver = $driver;
         return $this;
     }
     
@@ -89,8 +93,6 @@ class Connection
     function onReceiveData($client, $rawMessage)
     {
         try {
-            $response = array(500);
-        
             $env = $this->createEnvironment($client);
             
             // Parse Request Message Head
@@ -102,8 +104,11 @@ class Connection
                 $this->parseEntityBody($client, $env);
             }
 
-            $responses = $this->signals->handle->send($env);
-            
+            $response = $this->signals->handle->sendUntilResponse($env);
+
+            if (!$response) {
+                $response = array(404);
+            }
         } catch (Server\MalformedMessageException $e) {
             print $e->getPrevious();
             $response = array(400);
@@ -114,11 +119,6 @@ class Connection
             print $e;
         }
         
-        foreach ($responses as $response) {
-            if ($response) {
-                break;
-            }
-        }
         $this->sendResponse($client, $env, $response);
         $this->driver->closeConnection($client);
     }
@@ -300,6 +300,7 @@ class Connection
         $env->set("SERVER_NAME", $config->getHost());
         $env->set("SERVER_PORT", $config->getPort());
         $env->set("DOCUMENT_ROOT", $config->getDocumentRoot());
+        $env->set("TMP", $config->getTempDir());
         
         $clientInfo = $this->driver->getClientInfo($client);
         $env->set("REMOTE_ADDR", $clientInfo["host"]);

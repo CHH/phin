@@ -49,6 +49,8 @@ class Server
                 . "an instance of \\Phin\\Server\\Config"
             );
         }
+
+        $this->setConnection(new Server\Connection($this->config));
     }
 
     /**
@@ -65,7 +67,7 @@ class Server
      */
     function run($callback)
     {
-        $this->handler = $callback;
+        $this->connection->signals->handle->bind($callback);
         return $this;
     }
 
@@ -79,11 +81,9 @@ class Server
         $this->driver = Net_Server::create(
             $config->getDriverName(), $config->getHost(), $config->getPort()
         );
-        
+
+        $this->connection->setDriver($this->driver);        
         $this->driver->setEndCharacter("\r\n\r\n");
-        
-        $this->connection = new Server\Connection($this->driver, $config);
-        $this->connection->signals->handle->bind($this->handler);
         
         $this->driver->setCallbackObject($this->connection);
         $this->driver->setDebugMode($config->isDebugModeEnabled());

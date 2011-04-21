@@ -44,4 +44,30 @@ class SignalSlot
 
         return $results;
     }
+
+    function sendUntil(Environment $env, $filter)
+    {
+        foreach ($this->listeners as $listener) {
+            $response = call_user_func($listener, $env);
+
+            if (true === $filter($response)) {
+                return $response;
+            }
+        }
+
+        return false;
+    }
+
+    function sendUntilResponse(Environment $env)
+    {
+        foreach ($this->listeners as $listener) {
+            $response = call_user_func($listener, $env);
+
+            if ((is_array($response) or is_string($response)) and !empty($response)) {
+                return $response;
+            }
+        }
+
+        return false;
+    }
 }

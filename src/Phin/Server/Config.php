@@ -23,6 +23,13 @@ class Config
      * @var string
      */
     protected $driverName = "Fork";
+
+    /**
+     * Path where temporary files can be stored
+     *
+     * @var string
+     */
+    protected $tempDir;
     
     /**
      * Hostname or IP Address for listening
@@ -47,6 +54,8 @@ class Config
         if (strtoupper(substr(PHP_OS, 0, 3)) == "WIN") {
             $this->driverName = "Sequential";
         }
+
+        $this->tempDir = sys_get_temp_dir();
     
         empty($options) ?: $this->setOptions($options);
     }
@@ -65,6 +74,19 @@ class Config
     {
         return $this->port;
     }
+
+    function setTempDir($dir)
+    {
+        if (!is_dir($dir)) {
+            throw new InvalidArgumentException("$dir does not exist");
+        }
+        $this->tempDir = $dir;
+    }
+
+    function getTempDir()
+    {
+        return $this->tempDir;
+    }
     
     function setDebugMode($debugMode = true)
     {
@@ -79,7 +101,7 @@ class Config
     function setDocumentRoot($docRoot)
     {
         if (!is_dir($docRoot)) {
-            throw new Server\InvalidArgumentException("Document root does not exist");
+            throw new InvalidArgumentException("Document root does not exist");
         }
         $this->documentRoot = $docRoot;
     }
@@ -126,7 +148,7 @@ class Config
             $method = "set" . str_replace(' ', '', ucwords(str_replace(array('-', '_'), ' ', strtolower($option))));
 
             if (!is_callable(array($this, $method))) {
-                throw new Server\UnexpectedValueException("$option is not defined");
+                throw new UnexpectedValueException("$option is not defined");
             }
             $this->{$method}($value);
         }
