@@ -14,7 +14,7 @@ class HandlerQueue
     function __invoke(Environment $env) 
     {
         foreach ($this->queue as $handler) {
-            $response = $handler->call($env);
+            $response = call_user_func($handler, $env);
 
             if (is_array($response)) {
                 $status = isset($response[0]) ? $response[0] : 200;
@@ -33,7 +33,7 @@ class HandlerQueue
     
     function add($handler)
     {
-        $this->queue->enqueue(new Request\Handler($handler));
+        $this->queue->enqueue($handler);
         return $this;
     }
 }

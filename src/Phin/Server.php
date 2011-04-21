@@ -65,7 +65,7 @@ class Server
      */
     function run($callback)
     {
-        $this->handler = new Handler($callback);
+        $this->handler = $callback;
         return $this;
     }
 

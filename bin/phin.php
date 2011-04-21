@@ -6,8 +6,8 @@ require_once realpath(__DIR__ . "/../") . "/src/_autoload.php";
 
 use \Phin\Server,
     \Phin\Server\HandlerQueue,
-    \Phin\Server\FileHandler,
-    \Phin\Server\CgiHandler;
+    \Phin\Server\Handler\StaticFiles,
+    \Phin\Server\Handler\Cgi;
 
 class PhpServer
 {
@@ -19,13 +19,13 @@ class PhpServer
             "document_root" => $root . "/examples/public"
         ));
 
-        $cgiHandler = new CgiHandler($this->findPhpCgi(), array(
+        $cgiHandler = new Cgi($this->findPhpCgi(), array(
             "SCRIPT_FILENAME" => $root . "/examples/hello_world.php",
             "TMP" => "C:\\temp"
         ));
         
         $handlers = new HandlerQueue;
-        $handlers->add(new FileHandler)
+        $handlers->add(new StaticFiles)
                  ->add($cgiHandler);
 
         $server->run($handlers);

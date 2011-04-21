@@ -9,16 +9,20 @@
  * @copyright (c) 2011 Christoph Hochstrasser
  */
 
-namespace Phin\Server;
+namespace Phin\Server\Handler;
 
 use SplFileInfo,
-    finfo;
+    finfo,
+    Phin\Server\Environment;
 
-class FileHandler
+class StaticFiles
 {
     /** @var finfo */
     protected $fileInfo;
 
+    /**
+     * Constructor
+     */
     function __construct()
     {
         $this->fileInfo = new finfo(FILEINFO_MIME_TYPE);
@@ -46,7 +50,7 @@ class FileHandler
             "content-type" => $contentType
         );
         
-        $body = fopen((string) $file, "rb");
+        $body = fopen($file->getRealPath(), "rb");
         
         return array(200, $headers, $body);
     }

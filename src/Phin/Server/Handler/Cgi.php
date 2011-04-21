@@ -7,11 +7,13 @@
  * @copyright (c) Christoph Hochstrasser
  */
 
-namespace Phin\Server;
+namespace Phin\Server\Handler;
 
-use Symfony\Component\Process\Process;
+use Symfony\Component\Process\Process,
+    Phin\Server\Environment,
+    Phin\Server\HttpStatus;
 
-class CgiHandler
+class Cgi
 {
     /**
      * CGI executable
@@ -76,7 +78,7 @@ class CgiHandler
         $output = $process->getOutput();
 
         if ("HTTP" != substr($output, 0, 4)) {
-            $output = "HTTP/1.1 " . (new HttpStatus(200)) . "\r\n" . $output;
+            $output = "HTTP/1.1 200 OK\r\n" . $output;
         }
         
         return $output;
