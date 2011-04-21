@@ -1,11 +1,15 @@
-TODO:
+=======
+T O D O
+=======
 
-[ ] Temp Directory
-[ ] Implement Stderr handling (Logging to file? Logging to Console?)
+[ ] Temp Directory handled by Server
+[ ] Implement Server Error handling (Logging to file? Logging to Console?)
 [ ] More Separation of concerns
-[ ] Not so magic response handling (Response Class?)
-[ ] More Speed for PHP CGI
-[ ] The Need for Speed
-[ ] PHAR Archive for PHP Dev Server (maybe should be separate Project)
+        * Connection Class
+        * Response Class
 [ ] Signal-Slot based Architecture?
-[ ] Tests
+[ ] Unit Tests
+[ ] More Speed for PHP CGI -> Use FastCGI handler
+[ ] The Need for Speed
+[ ] PHAR Archive as server executable (maybe should be separate Project)
+[ ] Clustering Support
