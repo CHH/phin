@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * A simple HTTP Server with a Rack-like Protocol
+ *
+ * @package Phin
+ * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
+ * @license MIT License
+ * @copyright (c) 2011 Christoph Hochstrasser
+ */
+
 namespace Phin\Server;
 
 use Net_Server_Driver as Driver,
@@ -7,6 +16,13 @@ use Net_Server_Driver as Driver,
 
 class Connection
 {
+    /**
+     * Server Config
+     *
+     * @var \Phin\Server\Config
+     */
+    protected $config;
+    
     /**
      * Parser for the request HTTP message
      * 
@@ -30,14 +46,22 @@ class Connection
         "connection"   => "close"
     );
     
-    function __construct(Driver $driver)
+    function __construct(Driver $driver, Config $config = null)
     {
         $this->driver = $driver;
+        
+        empty($config) ?: $this->setConfig($config);
         $this->setParser(new Request\StandardParser);
         
         $this->signals = (object) array(
             "handle" => new SignalSlot
         );
+    }
+    
+    function setConfig(Config $config)
+    {
+        $this->config = $config;
+        return $this;
     }
     
     /**
@@ -65,6 +89,8 @@ class Connection
     function onReceiveData($client, $rawMessage)
     {
         try {
+            $response = array(500);
+        
             $env = $this->createEnvironment($client);
             
             // Parse Request Message Head
@@ -76,9 +102,8 @@ class Connection
                 $this->parseEntityBody($client, $env);
             }
 
-            if (null !== $this->handler) {
-                $response = $this->handler->call($env);
-            }
+            $responses = $this->signals->handle->send($env);
+            
         } catch (Server\MalformedMessageException $e) {
             print $e->getPrevious();
             $response = array(400);
@@ -89,6 +114,11 @@ class Connection
             print $e;
         }
         
+        foreach ($responses as $response) {
+            if ($response) {
+                break;
+            }
+        }
         $this->sendResponse($client, $env, $response);
         $this->driver->closeConnection($client);
     }
@@ -103,7 +133,7 @@ class Connection
     protected function sendResponse($client = 0, Environment $env, $response)
     {
         $driver = $this->driver;
-
+    
         // Handler returned simple response
         if (is_array($response)) {
             $status  = empty($response[0]) ? 200     : $response[0];
@@ -264,10 +294,12 @@ class Connection
     
     protected function createEnvironment($client = 0)
     {
+        $config = $this->config;
+    
         $env = new Environment;
-        $env->set("SERVER_NAME", $this->host);
-        $env->set("SERVER_PORT", $this->port);
-        $env->set("DOCUMENT_ROOT", $this->documentRoot);
+        $env->set("SERVER_NAME", $config->getHost());
+        $env->set("SERVER_PORT", $config->getPort());
+        $env->set("DOCUMENT_ROOT", $config->getDocumentRoot());
         
         $clientInfo = $this->driver->getClientInfo($client);
         $env->set("REMOTE_ADDR", $clientInfo["host"]);

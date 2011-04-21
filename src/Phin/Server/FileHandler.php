@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * A simple HTTP Server with a Rack-like Protocol
+ *
+ * @package Phin
+ * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
+ * @license MIT License
+ * @copyright (c) 2011 Christoph Hochstrasser
+ */
+
 namespace Phin\Server;
 
 use SplFileInfo,
@@ -12,7 +21,7 @@ class FileHandler
 
     function __construct()
     {
-        $this->fileInfo = new finfo;
+        $this->fileInfo = new finfo(FILEINFO_MIME_TYPE);
     }
 
     function __invoke(Environment $env)

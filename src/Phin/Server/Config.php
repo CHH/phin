@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * A simple HTTP Server with a Rack-like Protocol
+ *
+ * @package Phin
+ * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
+ * @license MIT License
+ * @copyright (c) 2011 Christoph Hochstrasser
+ */
+
 namespace Phin\Server;
 
 class Config
@@ -110,7 +119,7 @@ class Config
      *
      * @param array $options
      */
-    protected setOptions(array $options)
+    protected function setOptions(array $options)
     {
         foreach ($options as $option => $value) {
             // Convert option_name to setOptionName

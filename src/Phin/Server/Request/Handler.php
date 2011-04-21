@@ -19,6 +19,11 @@ class Handler
         $this->callback = $callback;
     }
     
+    function __invoke(Environment $env)
+    {
+        return $this->call($env);
+    }
+    
     function call(Environment $env)
     {
         try {

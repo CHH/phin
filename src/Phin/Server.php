@@ -16,7 +16,8 @@ use Net_Server,
     Net_Server_Driver,
     Phin\Server\Config,
     Phin\Server\Connection,
-    Phin\Server\InvalidArgumentException;
+    Phin\Server\InvalidArgumentException,
+    Phin\Server\Request\Handler;
 
 class Server
 {   
@@ -46,7 +47,7 @@ class Server
             throw new \InvalidArgumentException(
                 "Config must be either an array of options or "
                 . "an instance of \\Phin\\Server\\Config"
-            ));
+            );
         }
     }
 
@@ -81,8 +82,8 @@ class Server
         
         $this->driver->setEndCharacter("\r\n\r\n");
         
-        $this->connection = new Server\Connection($this->driver);
-        $this->connection->setHandler($this->handler);
+        $this->connection = new Server\Connection($this->driver, $config);
+        $this->connection->signals->handle->bind($this->handler);
         
         $this->driver->setCallbackObject($this->connection);
         $this->driver->setDebugMode($config->isDebugModeEnabled());

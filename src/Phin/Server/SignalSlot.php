@@ -1,5 +1,14 @@
 <?php
 
+/**
+ * A simple HTTP Server with a Rack-like Protocol
+ *
+ * @package Phin
+ * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
+ * @license MIT License
+ * @copyright (c) 2011 Christoph Hochstrasser
+ */
+
 namespace Phin\Server;
 
 class SignalSlot
@@ -24,12 +33,12 @@ class SignalSlot
         return $this;
     }
 
-    function send(array $args)
+    function send(Environment $env)
     {
         $results = new \SplDoublyLinkedList;
     
         foreach ($this->listeners as $listener) {
-            $r = call_user_func_array($listener, $args);
+            $r = call_user_func($listener, $env);
             $results->push($r);
         }
 
