@@ -3,6 +3,7 @@ T O D O
 =======
 
 * Implement Server Error handling (Logging to file? Logging to Console?)
+* Separate HTTP Protocol from Connection
 * More Separation of concerns
     * Response Class
 * Signal-Slot based Architecture?
