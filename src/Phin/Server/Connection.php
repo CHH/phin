@@ -52,6 +52,7 @@ class Connection
         $this->setParser(new Request\StandardParser);
         
         $this->signals = (object) array(
+            "receiveData" => new SignalSlot,
             "handle" => new SignalSlot
         );
     }
