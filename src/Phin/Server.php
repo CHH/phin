@@ -21,6 +21,8 @@ use Net_Server,
 
 class Server
 {   
+    const VERSION = "0.3.0";
+
     /** @var \Phin\Server\Config */
     protected $config;
     
