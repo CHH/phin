@@ -31,17 +31,17 @@ class StandardParser implements Parser
         $env->set("REQUEST_METHOD", $matches[1]);
         $env->set("REQUEST_URI", $requestUri);
         
-        $this->parseRequestUri($matches[2], $env);
+        $this->parseRequestUri($requestUri, $env);
         $version = $matches[3];
 
         for ($i = 1; $i < count($lines); $i++) {
             // In HTTP 1.1 a headers can span multiple lines. This is indicated by
             // a single space or tab in front of the line
-            if ("1.1" == $version
-                and (substr($line[$i], 0, 1) == ' ' or substr($line[$i], 0, 1) == "\t")
+            if ("HTTP/1.1" == $version
+                and ($lines[$i][0] == ' ' or $lines[$i][0] == "\t")
                 and isset($headerName)
             ) {
-                $env[$headerName] .= trim($line[$i]);
+                $env[$headerName] .= trim($lines[$i]);
                 continue;
             }
 
@@ -52,9 +52,14 @@ class StandardParser implements Parser
         }
 
         if (!empty($env["HTTP_HOST"])) {
-            list($host, $port) = explode(':', $env["HTTP_HOST"]);
+            if (false !== strpos($env["HTTP_HOST"], ':')) {
+                list($host, $port) = explode(':', $env["HTTP_HOST"]);
+            } else {
+                $host = $env["HTTP_HOST"];
+                $port = 80;
+            }
             $env->set("SERVER_NAME", $host);
-            $env->set("SERVER_PORT", $port);
+            $env->set("SERVER_PORT", (int) $port);
         }
 
         return $env;
@@ -63,11 +68,7 @@ class StandardParser implements Parser
     protected function parseRequestUri($uri, Environment $env)
     {
         if (false !== $pos = strpos($uri, "?")) {
-            $uri = substr($uri, 0, $pos);
             $env->set("QUERY_STRING", substr($uri, $pos + 1));
-        }
-        
-        if (false !== $pos = strpos($uri, "#")) {
             $uri = substr($uri, 0, $pos);
         }
         
