@@ -101,7 +101,7 @@ class Config
     function setDocumentRoot($docRoot)
     {
         if (!is_dir($docRoot)) {
-            throw new InvalidArgumentException("Document root does not exist");
+            throw new InvalidArgumentException("Document root $docRoot does not exist");
         }
         $this->documentRoot = $docRoot;
     }

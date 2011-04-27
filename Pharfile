@@ -1,0 +1,5 @@
+file_paths[] = "src"
+file_paths[] = "vendor"
+
+dist_path = "dist/phin.phar"
+cli_stub = "src/cli.php"

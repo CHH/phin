@@ -19,7 +19,7 @@ function is_absolute($path)
 
 if (empty($argv[1])) {
     throw new \Phin\Server\UnexpectedValueException("First argument must be either the"
-        . " Index Script or the Document Root");
+        . " Index Script or the Document Root, nothing given.");
 }
 
 $cli = new Cli;

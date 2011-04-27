@@ -79,7 +79,7 @@ class Cli
         
         print <<<EOL
 >>> Welcome to Phin v$version!
->>> Using CGI Handler, CGI Script is $phpCgi.
+>>> Using CGI Handler with $phpCgi.
 >>> Listening on $socket.
 >>> Terminate with [ CTRL ] + [ C ].\r\n\r\n
 EOL;
