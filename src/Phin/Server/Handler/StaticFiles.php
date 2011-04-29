@@ -13,7 +13,8 @@ namespace Phin\Server\Handler;
 
 use SplFileInfo,
     finfo,
-    Phin\Server\Environment;
+    Phin\Server\Environment,
+    Phin\Server\Response;
 
 class StaticFiles
 {
@@ -49,9 +50,11 @@ class StaticFiles
             "content-length" => $size,
             "content-type" => $contentType
         );
+
+        if ($env["REQUEST_METHOD"] !== "HEAD") {
+            $body = fopen($file->getRealPath(), "rb");
+        }
         
-        $body = fopen($file->getRealPath(), "rb");
-        
-        return array(200, $headers, $body);
+        return new Response(200, $headers, $body);
     }
 }

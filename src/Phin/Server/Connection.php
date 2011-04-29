@@ -11,8 +11,7 @@
 
 namespace Phin\Server;
 
-use Net_Server_Driver as Driver,
-    DateTime;
+use Net_Server_Driver as Driver;
 
 class Connection
 {
@@ -52,7 +51,6 @@ class Connection
         $this->setParser(new Request\StandardParser);
         
         $this->signals = (object) array(
-            "receiveData" => new SignalSlot,
             "handle" => new SignalSlot
         );
     }
@@ -108,16 +106,20 @@ class Connection
             $response = $this->signals->handle->sendUntilResponse($env);
 
             if (!$response) {
-                $response = array(404);
+                $response = new Response(404);
             }
         } catch (Server\MalformedMessageException $e) {
             print $e->getPrevious();
-            $response = array(400);
+            $response = new Response(400);
 
         } catch (\Exception $e) {
             $status = $e->getCode() ?: 500;
-            $response = array($status);
+            $response = new Response($status);
             print $e;
+        }
+
+        if (is_array($response)) {
+            $response = Response::fromArray($response);
         }
         
         $this->sendResponse($client, $env, $response);
@@ -127,120 +129,15 @@ class Connection
     /**
      * Sends the response
      *
-     * @param int          $client   ID of the Client
-     * @param Environment  $env      The request environment
-     * @param array|string $response The Response, an array of ($status, $headers, $body)
+     * @param int         $client   ID of the Client
+     * @param Environment $env      The request environment
+     * @param string      $response The Response, an array of ($status, $headers, $body)
      */
     protected function sendResponse($client = 0, Environment $env, $response)
     {
         $driver = $this->driver;
-    
-        // Handler returned simple response
-        if (is_array($response)) {
-            $status  = empty($response[0]) ? 200     : $response[0];
-            $headers = empty($response[1]) ? array() : $response[1];
-            $body    = empty($response[2]) ? ''      : $response[2];
-
-        // Handler returned raw response message, send and return early
-        } else if (is_string($response)) {
-            $this->driver->sendData($client, $response);
-            $this->driver->closeConnection($client);
-            return;
-        }
-
-        $headers = $this->normalizeHeaders($headers);
-        $status  = new HttpStatus($status);
-        
-        // Send message head
-        $driver->sendData($client, sprintf(
-            "HTTP/1.1 %s\r\n", $status
-        ));
-        
-        // Append GMT date/time
-        $date = new DateTime;
-        $date->setTimezone(new \DateTimeZone("GMT"));
-        
-        $headers["Date"] = $date->format(DateTime::RFC1123);
-
-        /*
-         * Build headers for entity body
-         */
-        if (!empty($body)) {
-            // Default Content-Type to text/html
-            isset($headers["Content-Type"]) ?: $headers["Content-Type"] = "text/html";
-
-            if (is_string($body)) {
-                $headers["Content-Length"] = strlen($body);
-            } else if (is_array($body)) {
-                $headers["Content-Length"] = array_reduce($body, function($sum, $value) {
-                    return $sum + strlen($value);
-                }, 0);
-            }
-        }
-        
-        if ("HEAD" == $env->get("REQUEST_METHOD")) {
-            $body = null;
-        }
-        
-        $this->sendHeaders($client, $headers);
-        $driver->sendData($client, $headers ? "\r\n" : "\r\n\r\n");
-        
-        if ($body) {
-            $this->sendBody($client, $body);
-        }
-
+        $driver->sendData($client, (string) $response);
         $driver->closeConnection($client);
-    }
-    
-    protected function normalizeHeaders(array $headers)
-    {
-        $normalize = function($header) {
-            $header = str_replace(array('-', '_'), ' ', $header);
-            $header = ucwords($header);
-            $header = str_replace(' ', '-', $header);
-            return $header;
-        };
-
-        $return = array();
-        
-        foreach ($headers as $header => &$value) {
-            $return[$normalize($header)] = $value;
-        }
-        return $return;
-    }
-    
-    protected function sendHeaders($client = 0, array $headers = array())
-    {
-        $driver  = $this->driver;
-        $headers = array_merge($this->defaultHeaders, $headers);
-
-        // Send headers
-        foreach ($headers as $header => $value) {
-            $driver->sendData($client, sprintf("%s: %s\r\n", $header, $value));
-        }
-    }
-
-    protected function sendBody($client = 0, $body)
-    {
-        $driver = $this->driver;
-    
-        // Send the body
-        if (is_string($body)) {
-            $driver->sendData($client, $body);
-
-        } else if (is_array($body)) {
-            foreach ($body as $b) {
-                $driver->sendData($client, $b);
-            }
-
-        // Send the file if the body is a resource handle
-        } else if (is_resource($body)) {
-            while (!feof($body)) {
-                $data = fread($body, 4096);
-                $driver->sendData($client, $data);
-            }
-            fclose($body);
-        }
     }
     
     /**

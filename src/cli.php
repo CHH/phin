@@ -9,7 +9,7 @@ use \Phin\Server\Cli;
 function is_absolute($path)
 {
     if ("WIN" == strtoupper(substr(PHP_OS, 0, 3))) {
-        if (preg_match("/^[a-zA-Z]\:\\/", $path)) {
+        if (preg_match("/^[a-zA-Z]\:\\\\/", $path)) {
             return true;
         }
         return false;

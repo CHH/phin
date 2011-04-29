@@ -79,12 +79,13 @@ class Server
     function listen()
     {   
         $config = $this->config;
-        
-        $this->driver = Net_Server::create(
+
+        $server = new Net_Server;
+        $this->driver = $server->create(
             $config->getDriverName(), $config->getHost(), $config->getPort()
         );
 
-        $this->connection->setDriver($this->driver);        
+        $this->connection->setDriver($this->driver);
         $this->driver->setEndCharacter("\r\n\r\n");
         
         $this->driver->setCallbackObject($this->connection);
