@@ -2,7 +2,8 @@
 
 namespace Phin\Server;
 
-use Phin\Server\Handler\StaticFiles,
+use Phin\Server,
+    Phin\Server\Handler\StaticFiles,
     Phin\Server\Handler\Cgi;
 
 class Cli
@@ -57,7 +58,7 @@ class Cli
             exit(2);
         }
         
-        $server = new \Phin\Server(array(
+        $server = new Server(array(
             "document_root" => $this->documentRoot,
             "port" => $this->port
         ));
@@ -73,9 +74,9 @@ class Cli
                ->run($cgiHandler);
         
         $config = $server->getConfig();
-        
-        $version = \Phin\Server::VERSION;
-        $socket = sprintf("%s:%d", $config->getHost(), $this->port);
+         
+        $version = Server::VERSION;
+        $socket  = sprintf("%s:%d", $config->getHost(), $this->port);
         
         print <<<EOL
 >>> Welcome to Phin v$version!
