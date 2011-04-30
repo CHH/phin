@@ -18,3 +18,8 @@ dependencies:
         vcs: "git"
         repository: "git://github.com/symfony/ClassLoader.git"
         target: "vendor/Symfony/Component/ClassLoader"
+    -
+        type: "repository"
+        vcs: "git"
+        repository: "git://github.com/symfony/Console.git"
+        target: "vendor/Symfony/Component/Console"
