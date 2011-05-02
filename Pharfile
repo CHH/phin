@@ -2,4 +2,4 @@ file_paths[] = "src"
 file_paths[] = "vendor"
 
 dist_path = "bin/phin.phar"
-cli_stub  = "src/cli.php"
+cli_stub  = "src/phin.php"
