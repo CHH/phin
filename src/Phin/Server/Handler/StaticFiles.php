@@ -34,15 +34,16 @@ class StaticFiles
         $docRoot = $env["DOCUMENT_ROOT"];
         $file    = $docRoot . $env["PATH_INFO"] . '/' . $env["SCRIPT_NAME"];
         
-        if (!is_file($file)) {
+        $file = new SplFileInfo($file);
+        
+        if (!$file->isFile()) {
             return false;
         }
-        if (!is_readable($file)) {
+        if (!$file->isReadable()) {
             return array(500);
         }
 
-        $file = new SplFileInfo($file);
-        $contentType = $this->fileInfo->file((string) $file);
+        $contentType = $this->fileInfo->file($file->getRealPath());
 
         $size = $file->getSize();
 
