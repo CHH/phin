@@ -166,8 +166,8 @@ EOL;
         }
 
         foreach ($searchPaths as $path) {
-            if (is_executable($path . "/php-cgi" . $suffix)) {
-                return $path . "/php-cgi" . $suffix;
+            if (is_executable($path . DIRECTORY_SEPARATOR . "php-cgi" . $suffix)) {
+                return $path . DIRECTORY_SEPARATOR . "php-cgi" . $suffix;
             }
         }
     }
@@ -175,7 +175,7 @@ EOL;
     protected function isAbsolute($path) 
     {
         if ("WIN" == strtoupper(substr(PHP_OS, 0, 3))) {
-            return preg_match($path, "/[a-zA-Z]\:\\\\/");
+            return preg_match("/[a-zA-Z]\:\\\\/", $path);
         } else if ($path[0] == '/') {
             return true;
         }
