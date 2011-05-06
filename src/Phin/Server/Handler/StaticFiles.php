@@ -20,7 +20,12 @@ class StaticFiles
 {
     /** @var finfo */
     protected $fileInfo;
-
+    
+    protected $index = array(
+        "index.htm",
+        "index.html"
+    );
+    
     /**
      * Constructor
      */
@@ -37,8 +42,14 @@ class StaticFiles
         $file = new SplFileInfo($file);
         
         if (!$file->isFile()) {
-            return false;
+            if ($file->isDir()) {
+                $file = $this->findIndex($file);   
+            }
+            if (false === $file) {
+                return false;
+            }
         }
+        
         if (!$file->isReadable()) {
             return array(500);
         }
@@ -51,11 +62,23 @@ class StaticFiles
             "content-length" => $size,
             "content-type" => $contentType
         );
-
+        
+        $body = '';
         if ($env["REQUEST_METHOD"] !== "HEAD") {
             $body = fopen($file->getRealPath(), "rb");
         }
         
         return new Response(200, $headers, $body);
+    }
+    
+    protected function findIndex(SplFileInfo $directory) {
+        $path = $directory->getRealPath();
+        
+        foreach ($this->index as $index) {
+            if (file_exists($path . DIRECTORY_SEPARATOR . $index)) {
+                return new SplFileInfo($path . DIRECTORY_SEPARATOR . $index);
+            }
+        }
+        return false;
     }
 }
