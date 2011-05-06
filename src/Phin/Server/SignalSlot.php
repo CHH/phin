@@ -1,7 +1,5 @@
-<?php
-
 /**
- * A simple HTTP Server with a Rack-like Protocol
+ * A simple HTTP Server for development environments
  *
  * @package Phin
  * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>

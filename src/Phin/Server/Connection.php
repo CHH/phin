@@ -113,8 +113,7 @@ class Connection
             $response = new Response(400);
 
         } catch (\Exception $e) {
-            $status = $e->getCode() ?: 500;
-            $response = new Response($status);
+            $response = new Response($e->getCode() ?: 500);
             print $e;
         }
 
