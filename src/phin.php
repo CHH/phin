@@ -1,10 +1,8 @@
 <?php
 
-namespace Phin\Server\Cli;
+namespace Phin\Server;
 
 require_once __DIR__ . "/_autoload.php";
-
-use \Phin\Server\Cli;
 
 $cli = new Cli;
 $cli->run();
