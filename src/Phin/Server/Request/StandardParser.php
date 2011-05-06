@@ -24,7 +24,12 @@ class StandardParser implements Parser
         }
 
         $requestUri = $matches[2];
-
+        $version = $matches[3];
+        
+        if ($version < "HTTP/1.1") {
+            throw new MalformedMessageException("HTTP Version $version is not supported");
+        }
+        
         if (".." == substr($requestUri, 0, 2)) {
             $requestUri = substr($requestUri, 2);
         }
@@ -33,13 +38,11 @@ class StandardParser implements Parser
         $env->set("REQUEST_URI", $requestUri);
         
         $this->parseRequestUri($requestUri, $env);
-        $version = $matches[3];
-
+        
         for ($i = 1; $i < count($lines); $i++) {
             // In HTTP 1.1 a headers can span multiple lines. This is indicated by
             // a single space or tab in front of the line
-            if ("HTTP/1.1" == $version
-                and ($lines[$i][0] == ' ' or $lines[$i][0] == "\t")
+            if (($lines[$i][0] == ' ' or $lines[$i][0] == "\t")
                 and isset($headerName)
             ) {
                 $env[$headerName] .= trim($lines[$i]);
