@@ -1,3 +1,4 @@
+<?php
 /**
  * A simple HTTP Server for development environments
  *
