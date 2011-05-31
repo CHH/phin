@@ -10,8 +10,6 @@
 
 namespace Phin;
 
-require_once "Net/Server.php";
-
 use Net_Server,
     Net_Server_Driver,
     Phin\Server\Config,
@@ -81,10 +79,17 @@ class Server
         $config = $this->config;
 
         $server = new Net_Server;
-        $this->driver = $server->create(
+        $driver = $server->create(
             $config->getDriverName(), $config->getHost(), $config->getPort()
         );
 
+        if ($driver instanceof \PEAR_Error) {
+            throw new Server\RuntimeException(
+                "Error while creating Net_Server_Driver: " . $driver->toString()
+            );
+        }
+        
+        $this->driver = $driver;
         $this->connection->setDriver($this->driver);
         $this->driver->setEndCharacter("\r\n\r\n");
         

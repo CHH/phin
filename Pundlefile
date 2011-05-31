@@ -4,10 +4,11 @@ dependencies:
     -
         type: "php"
         version: "~5.3.2"
-    -
-        type: "pear"
-        package: "Net_Server"
-        version: "~1.0.2"
+    - 
+        type: "repository"
+        vcs: "svn"
+        repository: "http://svn.php.net/repository/pear/packages/Net_Server/trunk"
+        target: "vendor/Net_Server"
     -
         type: "repository"
         vcs: "git"
