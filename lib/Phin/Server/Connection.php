@@ -41,7 +41,7 @@ class Connection
      * @var array
      */
     protected $defaultHeaders = array(
-        "x-powered-by" => "Phin, the phun, PHP Web Server",
+        "x-powered-by" => "Phin, the fun, PHP Web Server",
         "connection"   => "close"
     );
     

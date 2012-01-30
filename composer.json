@@ -1,0 +1,26 @@
+{
+    "name": "chh/phin",
+    "authors": [
+        { "name": "Christoph Hochstrasser", "email": "christoph.hochstrasser@gmail.com" }
+    ],
+    "license": "MIT",
+    "description": "A simple, preforking PHP App Server",
+    "keywords": [
+        "server"
+    ],
+    "homepage": "https://github.com/CHH/Phin",
+    "autoload": {
+        "psr-0": {
+            "Phin": "lib/"
+        }
+    },
+    "require": {
+        "php": ">=5.3.2",
+        "ext-pcntl": "*",
+        "ext-posix": "*",
+        "ext-sockets": "*",
+        "evenement/evenement": "*",
+        "symfony/console": ">=2.0.0,<2.1.0dev",
+        "symfony/http-foundation": ">=2.0.0,<2.1.0dev"
+    }
+}

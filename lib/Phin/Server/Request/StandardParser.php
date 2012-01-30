@@ -1,20 +1,13 @@
 <?php
-/**
- * HTTP Request Parser
- *
- * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
- * @license MIT License
- * @copyright (c) Christoph Hochstrasser
- */
 
 namespace Phin\Server\Request;
 
-use \Phin\Server\Environment,
-    \Phin\Server\MalformedMessageException;
+use Symfony\Component\HttpFoundation\Request,
+    Phin\Server\Request\MalformedMessageException;
 
 class StandardParser implements Parser
 {
-    function parse($raw, Environment $env)
+    function parse($raw, Request $req)
     {
         $raw = trim($raw);
         $lines = explode("\r\n", $raw);
@@ -25,20 +18,20 @@ class StandardParser implements Parser
 
         $requestUri = $matches[2];
         $version = $matches[3];
-        
-        if ($version < "HTTP/1.1") {
+
+        if ($version < "HTTP/1.0") {
             throw new MalformedMessageException("HTTP Version $version is not supported");
         }
-        
+
         if (".." == substr($requestUri, 0, 2)) {
             $requestUri = substr($requestUri, 2);
         }
-        
-        $env->set("REQUEST_METHOD", $matches[1]);
-        $env->set("REQUEST_URI", $requestUri);
-        
-        $this->parseRequestUri($requestUri, $env);
-        
+
+        $req->server->set("REQUEST_METHOD", $matches[1]);
+        $req->server->set("REQUEST_URI", $requestUri);
+
+        $this->parseRequestUri($requestUri, $req);
+
         for ($i = 1; $i < count($lines); $i++) {
             // In HTTP 1.1 a headers can span multiple lines. This is indicated by
             // a single space or tab in front of the line
@@ -69,15 +62,15 @@ class StandardParser implements Parser
         return $env;
     }
 
-    protected function parseRequestUri($uri, Environment $env)
+    protected function parseRequestUri($uri, Request $req)
     {
         if (false !== $pos = strpos($uri, "?")) {
-            $env->set("QUERY_STRING", substr($uri, $pos + 1));
+            $req->server->set("QUERY_STRING", substr($uri, $pos + 1));
             $uri = substr($uri, 0, $pos);
         }
-        
-        $env->set("PATH_INFO", dirname($uri));
-        $env->set("SCRIPT_NAME", basename($uri));
+
+        $req->server->set("PATH_INFO", dirname($uri));
+        $env->server->set("SCRIPT_NAME", basename($uri));
     }
 }
 

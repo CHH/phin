@@ -63,66 +63,55 @@ class Cli
         try {
             $input = new Input\ArgvInput(null, $this->options);
 
-            if ($action = $input->getArgument("action") !== "start") {
+            if (($action = $input->getArgument("action") ?: 'start') and !is_callable(array($this, $action))) {
                 throw new RuntimeException("Action $action is not implemented");
             }
+
             if ($input->getOption("help")) {
                 throw new RuntimeException("");
             }
+
+            $this->{$action}();
+            return 0;
         } catch (RuntimeException $e) {
             print $this->displayHelp();
-            return;
+            return 1;
         }
+    }
 
+    function start()
+    {
         $config = new Server\Config;
-        
+
         $documentRoot = $input->getOption("document_root");
+
         if ($documentRoot != getcwd() and !$this->isAbsolute($documentRoot)) {
             $documentRoot = realpath(getcwd() . DIRECTORY_SEPARATOR . $documentRoot);
         }
+
         $config->setDocumentRoot($documentRoot);
-
-        if (!$input->hasOption("index")) {
-            if (is_readable($documentRoot . DIRECTORY_SEPARATOR . "index.php")) {
-                $indexScript = $documentRoot . DIRECTORY_SEPARATOR . "index.php";
-            }
-        } else {
-            $indexScript = $input->getOption("index");
-            if (!$this->isAbsolute($indexScript)) {
-                $indexScript = realpath(getcwd() . DIRECTORY_SEPARATOR . $indexScript);
-            }
-        }
-
         $config->setPort($input->getOption("port"));
         $config->setHost($input->getOption("host"));
 
         $server = new Server($config);
-        
-        $staticHandler = new StaticFiles;
-        $server->run($staticHandler);
-        
-        if (!empty($indexScript)) {
-            $cgiHandler = new Cgi($input->getOption("php_cgi"), array(
-                "SCRIPT_FILENAME" => $indexScript
-            ));
-            $server->run($cgiHandler);
-        }
-        
+
+        // TODO Handle request
+
         $version = Server::VERSION;
         $socket  = sprintf("%s:%d", $config->getHost(), $config->getPort());
-        
+
         print <<<EOL
 >>> Welcome to Phin v$version!
 >>> Using CGI Handler with {$input->getOption('php_cgi')}.
 >>> Listening on $socket.
 >>> Terminate with [ CTRL ] + [ C ].\r\n\r\n
 EOL;
-        
+
         $server->listen();
     }
 
     protected function displayHelp()
-    {   
+    {
         $synopsis = $this->options->getSynopsis();
         $bin = basename($_SERVER["SCRIPT_FILENAME"]);
 
@@ -132,7 +121,7 @@ EOL;
         foreach ($this->options->getArguments() as $argument) {
             $help .= sprintf("\t%s: %s\r\n", $argument->getName(), $argument->getDescription());
         }
-        
+
         $help .= "\r\nOptions:\r\n";
         foreach ($this->options->getOptions() as $option) {
             $help .= sprintf(
@@ -144,41 +133,5 @@ EOL;
         }
 
         return $help;
-    }
-    
-    /**
-     * Search for a PHP CGI Executable
-     *
-     * @return string The Path to the CGI Executable
-     */
-    protected function findPhpCgi()
-    {
-        $suffix = '';
-
-        if ("WIN" == strtoupper(substr(PHP_OS, 0, 3))) {
-            $searchPaths = array(
-                "C:\\php", "C:\\Program Files (x86)", 
-                "C:\\Program Files", "C:\\xampp\\php"
-            );
-            $suffix = ".exe";
-        } else {
-            $searchPaths = array("/usr/bin", "/usr/local/bin");
-        }
-
-        foreach ($searchPaths as $path) {
-            if (is_executable($path . DIRECTORY_SEPARATOR . "php-cgi" . $suffix)) {
-                return $path . DIRECTORY_SEPARATOR . "php-cgi" . $suffix;
-            }
-        }
-    }
-    
-    protected function isAbsolute($path) 
-    {
-        if ("WIN" == strtoupper(substr(PHP_OS, 0, 3))) {
-            return preg_match("/[a-zA-Z]\:\\\\/", $path);
-        } else if ($path[0] == '/') {
-            return true;
-        }
-        return false;
     }
 }
