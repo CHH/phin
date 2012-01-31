@@ -1,16 +1,16 @@
 <?php
 /**
- * InvalidArgumentException
+ * UnexpectedValueException
  *
- * @package Phin
+ * @package Spark_Http_Server
  * @author Christoph Hochstrasser <christoph.hochstrasser@gmail.com>
  * @license MIT License
  * @copyright (c) 2011 Christoph Hochstrasser
  */
-namespace Phin\Server;
+namespace Phin;
 
-class InvalidArgumentException
-    extends \InvalidArgumentException
+class UnexpectedValueException
+    extends \UnexpectedValueException
     implements Exception
 {}
 

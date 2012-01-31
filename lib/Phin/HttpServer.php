@@ -2,12 +2,14 @@
 
 namespace Phin;
 
-use Phin\Server\Config,
-    Phin\Server\InvalidArgumentException,
-    Phin\Server\UnexpectedValueException,
+use Phin\Config,
+    Phin\Request\StandardParser,
+    Phin\Socket,
+    Phin\InvalidArgumentException,
+    Phin\UnexpectedValueException,
     Evenement\EventEmitter;
 
-class Server
+class HttpServer
 {
     const VERSION = "0.4.0";
 
@@ -17,6 +19,8 @@ class Server
 
     # Bound Socket.
     var $socket;
+
+    var $parser;
 
     # Used to write messages back from the child to the parent.
     protected $selfPipe = array();
@@ -29,6 +33,8 @@ class Server
 
     # Internal: PIDs of all Workers
     protected $workers;
+
+    protected $leftOver = '';
 
     # Initializes the server with the config.
     #
@@ -48,6 +54,7 @@ class Server
             );
         }
 
+        $this->parser = new StandardParser;
         $this->events = new EventEmitter;
     }
 
@@ -56,7 +63,7 @@ class Server
     # handler - Callback to run on each request.
     function run($handler)
     {
-        $this->events->on('handle', $handler);
+        $this->handler = $handler;
         return $this;
     }
 
@@ -66,48 +73,23 @@ class Server
         $this->events->emit('bootstrap', array($this));
 
         if ($config->socket) {
-            $this->socket = @socket_create(AF_UNIX, SOCK_STREAM, 0);
+            $this->socket = Socket::unix();
         } else {
-            $this->socket = @socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+            $this->socket = Socket::inet();
         }
 
-        socket_set_nonblock($this->socket);
+        $this->socket->setNonBlock();
 
-        if (false === $this->socket) {
-            throw new UnexpectedValueException(sprintf(
-                "Error while creating Socket: %s", socket_strerror(socket_last_error())
-            ));
-        }
-
-        # Use an Unix Socket
         if ($unixSocket = $config->socket) {
-            if (false === @socket_bind($this->socket, $unixSocket)) {
-                throw new UnexpectedValueException(sprintf(
-                    "Unable to bind to Unix Socket %s: %s", 
-                    $unixSocket, socket_strerror(socket_last_error($this->socket))
-                ));
-            }
-        # Use an AF_INET Socket
+            # Use an Unix Socket
+            $this->socket->bind($unixSocket);
         } else {
-            $host = $config->host;
-            $port = $config->port;
-
-            if (false === @socket_bind($this->socket, $host, $port)) {
-                throw new UnexpectedValueException(sprintf(
-                    "Unable to bind to %s:%d: %s",
-                    $host, $port, socket_strerror(socket_last_error($this->socket))
-                ));
-            }
+            $this->socket->bind($config->host, $config->port);
         }
 
-        if (false === @socket_listen($this->socket, 10)) {
-            throw new UnexpectedValueException(sprintf(
-                "Unable to listen on socket: %s",
-                socket_strerror(socket_last_error($this->socket))
-            ));
-        }
+        $this->socket->listen(5);
 
-        socket_create_pair(AF_UNIX, SOCK_STREAM, 0, $this->selfPipe);
+        $this->selfPipe = Socket::createPair(AF_UNIX, SOCK_STREAM, 0);
 
         for ($i = 1; $i <= $config->workerPoolSize; $i++) {
             $pid = pcntl_fork();
@@ -127,10 +109,10 @@ class Server
 
         fwrite(STDERR, "Started all workers\n");
 
-        socket_close($this->selfPipe[1]);
+        $this->selfPipe[1]->close();
 
         register_shutdown_function(function() use ($config) {
-            socket_close($this->socket);
+            $this->socket->close();
             $config->socket and unlink($config->socket);
         });
 
@@ -160,7 +142,7 @@ class Server
             exit();
         });
 
-        socket_close($this->selfPipe[0]);
+        $this->selfPipe[0]->close();
 
         for (;;) {
             $this->workerLoop();
@@ -170,9 +152,9 @@ class Server
 
     protected function workerLoop()
     {
-        $read  = array($this->socket);
+        $read  = array($this->socket->handle);
         $write = null;
-        $exception = array($this->selfPipe[1]);
+        $exception = array($this->selfPipe[1]->handle);
 
         # Wait for data ready to be read, or look for exceptions
         $readySize = @socket_select($read, $write, $exception, 30);
@@ -192,31 +174,59 @@ class Server
 
     protected function handleRequest()
     {
-        $client = @socket_accept($this->socket);
+        $client = $this->socket->accept();
 
         if (!$client) {
             usleep(10000);
             return;
         }
 
-        $request = '';
+        $io = new Socket\SocketIO($client);
+        $env = $this->createEnvironment();
 
-        while ($chunk = @socket_read($client, 16384)) {
-            if (false === $chunk) {
-                throw new UnexpectedValueException(sprintf(
-                    "Unable to read from client: %s",
-                    socket_strerror(socket_last_error($client))
-                ));
+        $message = '';
+
+        while ($chunk = $io->read(16384)) {
+            if (!$chunk) {
+                break;
             }
-            $request .= $chunk;
+            $message .= $chunk;
         }
 
-        $pid = posix_getpid();
+        try {
+            $this->parser->parse($message, $env);
 
-        echo "------ Worker #$pid received Request: ------\n";
-        echo $request;
+        } catch (UnexpectedValueException $e) {
+            fwrite(STDERR, (string) $e);
+            $client->close();
+            return;
+        }
 
-        socket_close($client);
+        $resp = call_user_func($this->handler, $env);
+        $resp = Response::fromArray($resp);
+
+        fwrite(STDERR, $resp->headersToString());
+
+        $io->write($resp->toString());
+        $client->close();
+    }
+
+    protected function sendResponse($client, $response)
+    {
+        $client->write($response);
+    }
+
+    protected function createEnvironment()
+    {
+        $config = $this->config;
+
+        $env = new Environment;
+        $env->set("SERVER_NAME", $config->host);
+        $env->set("SERVER_PORT", $config->port);
+        $env->set("DOCUMENT_ROOT", $config->documentRoot);
+        $env->set("TMP", $config->tempDir);
+
+        return $env;
     }
 
     function stopListening()

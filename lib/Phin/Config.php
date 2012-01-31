@@ -1,6 +1,6 @@
 <?php
 
-namespace Phin\Server;
+namespace Phin;
 
 class Config
 {

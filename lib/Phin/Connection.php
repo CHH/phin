@@ -9,7 +9,7 @@
  * @copyright (c) 2011 Christoph Hochstrasser
  */
 
-namespace Phin\Server;
+namespace Phin;
 
 use Net_Server_Driver as Driver;
 
@@ -194,15 +194,10 @@ class Connection
         $config = $this->config;
     
         $env = new Environment;
-        $env->set("SERVER_NAME", $config->getHost());
-        $env->set("SERVER_PORT", $config->getPort());
-        $env->set("DOCUMENT_ROOT", $config->getDocumentRoot());
-        $env->set("TMP", $config->getTempDir());
-        
-        $clientInfo = $this->driver->getClientInfo($client);
-        $env->set("REMOTE_ADDR", $clientInfo["host"]);
-        $env->set("REMOTE_PORT", $clientInfo["port"]);
-        $env->set("REQUEST_TIME", $clientInfo["connectOn"]);
+        $env->set("SERVER_NAME", $config->host);
+        $env->set("SERVER_PORT", $config->port);
+        $env->set("DOCUMENT_ROOT", $config->documentRoot);
+        $env->set("TMP", $config->tempDir);
 
         return $env;
     }

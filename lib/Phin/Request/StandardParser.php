@@ -1,18 +1,23 @@
 <?php
 
-namespace Phin\Server\Request;
+namespace Phin\Request;
 
-use Symfony\Component\HttpFoundation\Request,
-    Phin\Server\Request\MalformedMessageException;
+use Phin\Environment,
+    Phin\Request\MalformedMessageException,
+    Phin\UnexpectedValueException;
 
 class StandardParser implements Parser
 {
-    function parse($raw, Request $req)
+    function parse($raw, Environment $env)
     {
-        $raw = trim($raw);
-        $lines = explode("\r\n", $raw);
+        var_dump($raw);
 
-        if (!preg_match("'([^ ]+) ([^ ]+) (HTTP/[^ ]+)'", $lines[0], $matches)) {
+        $bodyStart = strpos($raw, "\r\n\r\n");
+        $header = substr($raw, 0, $bodyStart - 1);
+
+        $headerLines = explode("\r\n", $header);
+
+        if (!preg_match("'([^ ]+) ([^ ]+) (HTTP/[^ ]+)'", $headerLines[0], $matches)) {
             throw new MalformedMessageException("Header Line not found");
         }
 
@@ -20,29 +25,30 @@ class StandardParser implements Parser
         $version = $matches[3];
 
         if ($version < "HTTP/1.0") {
-            throw new MalformedMessageException("HTTP Version $version is not supported");
+            throw new MalformedMessageException("$version is not supported");
         }
 
         if (".." == substr($requestUri, 0, 2)) {
             $requestUri = substr($requestUri, 2);
         }
 
-        $req->server->set("REQUEST_METHOD", $matches[1]);
-        $req->server->set("REQUEST_URI", $requestUri);
+        $env->set('server.input', substr($raw, $bodyStart + 4));
+        $env->set("REQUEST_METHOD", $matches[1]);
+        $env->set("REQUEST_URI", $requestUri);
 
-        $this->parseRequestUri($requestUri, $req);
+        $this->parseRequestUri($requestUri, $env);
 
-        for ($i = 1; $i < count($lines); $i++) {
+        for ($i = 1; $i < count($headerLines); $i++) {
             // In HTTP 1.1 a headers can span multiple lines. This is indicated by
             // a single space or tab in front of the line
-            if (($lines[$i][0] == ' ' or $lines[$i][0] == "\t")
+            if (($headerLines[$i][0] == ' ' or $headerLines[$i][0] == "\t")
                 and isset($headerName)
             ) {
                 $env[$headerName] .= trim($lines[$i]);
                 continue;
             }
 
-            if (preg_match("'([^: ]+): (.+)'", $lines[$i], $header)) {
+            if (preg_match("'([^: ]+): (.+)'", $headerLines[$i], $header)) {
                 $headerName = "HTTP_" . strtoupper(str_replace('-', '_', $header[1]));
                 $env[$headerName] = $header[2];
             }
@@ -62,15 +68,15 @@ class StandardParser implements Parser
         return $env;
     }
 
-    protected function parseRequestUri($uri, Request $req)
+    protected function parseRequestUri($uri, Environment $env)
     {
         if (false !== $pos = strpos($uri, "?")) {
-            $req->server->set("QUERY_STRING", substr($uri, $pos + 1));
+            $env->set("QUERY_STRING", substr($uri, $pos + 1));
             $uri = substr($uri, 0, $pos);
         }
 
-        $req->server->set("PATH_INFO", dirname($uri));
-        $env->server->set("SCRIPT_NAME", basename($uri));
+        $env->set("PATH_INFO", dirname($uri));
+        $env->set("SCRIPT_NAME", basename($uri));
     }
 }
 
