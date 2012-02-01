@@ -10,8 +10,6 @@ class StandardParser implements Parser
 {
     function parse($raw, Environment $env)
     {
-        var_dump($raw);
-
         $bodyStart = strpos($raw, "\r\n\r\n");
         $header = substr($raw, 0, $bodyStart - 1);
 

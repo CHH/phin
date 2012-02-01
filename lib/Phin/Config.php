@@ -23,6 +23,8 @@ class Config
 
     var $workerPoolSize = 4;
 
+    var $pidFile = '/var/run/phin.pid';
+
     function __construct(array $options = array())
     {
         $this->tempDir = sys_get_temp_dir();

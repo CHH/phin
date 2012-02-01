@@ -7,7 +7,9 @@ use Phin\Config,
     Phin\Socket,
     Phin\InvalidArgumentException,
     Phin\UnexpectedValueException,
-    Evenement\EventEmitter;
+    Monolog\Logger,
+    Monolog\Handler\StreamHandler,
+    Monolog\Formatter\LineFormatter;
 
 class HttpServer
 {
@@ -21,6 +23,8 @@ class HttpServer
     var $socket;
 
     var $parser;
+
+    var $log;
 
     # Used to write messages back from the child to the parent.
     protected $selfPipe = array();
@@ -54,13 +58,21 @@ class HttpServer
             );
         }
 
-        $this->parser = new StandardParser;
-        $this->events = new EventEmitter;
+        $this->log = new Logger('phin');
+
+        $stderrHandler = new StreamHandler(STDERR);
+        $stderrHandler->setFormatter(new LineFormatter(
+            "[%datetime%] %channel% (%level_name%): %message%\n"
+        ));
+
+        $this->log->pushHandler($stderrHandler);
     }
 
     # Public: Sets a handler to run on each request.
     #
-    # handler - Callback to run on each request.
+    # handler - Callback to run on each request. The handler receives
+    #           and IO instance and should close the connection after he
+    #           has finished writing.
     function run($handler)
     {
         $this->handler = $handler;
@@ -69,14 +81,28 @@ class HttpServer
 
     function listen()
     {
+        if (file_exists($this->config->pidFile)) {
+            throw new UnexpectedValueException(sprintf(
+                "Existing PID file found in %s. Maybe the server is already running. Delete this file,
+                or make sure the server does not run.",
+                $this->config->pidFile
+            ));
+        }
+
         $config = $this->config;
-        $this->events->emit('bootstrap', array($this));
+        $log    = $this->log;
 
         if ($config->socket) {
             $this->socket = Socket::unix();
         } else {
             $this->socket = Socket::inet();
         }
+
+        register_shutdown_function(function($socket, $config) {
+            $socket->close();
+            $config->socket and @unlink($config->socket);
+            @unlink($config->pidFile);
+        }, $this->socket, $config);
 
         $this->socket->setNonBlock();
 
@@ -88,6 +114,13 @@ class HttpServer
         }
 
         $this->socket->listen(5);
+
+        if (false === @file_put_contents($config->pidFile, posix_getpid())) {
+            throw new UnexpectedValueException(sprintf(
+                'Could not create %s. Maybe you have no permission to write it.',
+                $config->pidFile
+            ));
+        }
 
         $this->selfPipe = Socket::createPair(AF_UNIX, SOCK_STREAM, 0);
 
@@ -107,17 +140,12 @@ class HttpServer
             }
         }
 
-        fwrite(STDERR, "Started all workers\n");
+        $log->info("Started all workers");
 
         $this->selfPipe[1]->close();
 
-        register_shutdown_function(function() use ($config) {
-            $this->socket->close();
-            $config->socket and unlink($config->socket);
-        });
-
-        pcntl_signal(SIGCHLD, function() {
-            fwrite(STDERR, "Child terminated!\n");
+        pcntl_signal(SIGCHLD, function() use ($log) {
+            $log->addWarning("Child terminated!\n");
             # Decrement actual worker count and respawn
             # the worker process.
         });
@@ -126,8 +154,8 @@ class HttpServer
             exit();
         });
 
-        pcntl_signal(SIGUSR2, function() {
-            fwrite(STDERR, "I'm a Teapot!");
+        pcntl_signal(SIGUSR2, function() use ($log) {
+            $log->info("I'm a Teapot!");
         });
 
         for (;;) {
@@ -174,46 +202,17 @@ class HttpServer
 
     protected function handleRequest()
     {
-        $client = $this->socket->accept();
+        $result = $this->socket->accept();
 
-        if (!$client) {
+        if (!$result) {
             usleep(10000);
             return;
         }
 
-        $io = new Socket\SocketIO($client);
-        $env = $this->createEnvironment();
+        list($client, $addrinfo) = $result;
+        $io  = new Socket\SocketIO($client);
 
-        $message = '';
-
-        while ($chunk = $io->read(16384)) {
-            if (!$chunk) {
-                break;
-            }
-            $message .= $chunk;
-        }
-
-        try {
-            $this->parser->parse($message, $env);
-
-        } catch (UnexpectedValueException $e) {
-            fwrite(STDERR, (string) $e);
-            $client->close();
-            return;
-        }
-
-        $resp = call_user_func($this->handler, $env);
-        $resp = Response::fromArray($resp);
-
-        fwrite(STDERR, $resp->headersToString());
-
-        $io->write($resp->toString());
-        $client->close();
-    }
-
-    protected function sendResponse($client, $response)
-    {
-        $client->write($response);
+        call_user_func($this->handler, $io);
     }
 
     protected function createEnvironment()

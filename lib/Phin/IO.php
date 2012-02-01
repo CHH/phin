@@ -16,6 +16,11 @@ interface IO
     #
     # length - Number of bytes to read, optional.
     #
-    # Returns the buffer as String.
+    # Returns the read String.
     function read($length = 0);
+
+    # Closes the IO resource.
+    #
+    # Returns nothing.
+    function close();
 }

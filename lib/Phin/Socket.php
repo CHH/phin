@@ -2,7 +2,8 @@
 
 namespace Phin;
 
-use Phin\Socket\Exception;
+use Phin\Socket\Exception,
+    Phin\Socket\AddrInfo;
 
 class Socket
 {
@@ -83,6 +84,11 @@ class Socket
         return $this;
     }
 
+    # Tries to accept a connection from the client.
+    #
+    # Returns an Array of the client connection and an AddrInfo object,
+    # or Null when no client was found (probably because someone was faster
+    # than we).
     function accept()
     {
         $client = @socket_accept($this->handle);
@@ -92,7 +98,10 @@ class Socket
             return null;
         }
 
-        return new static($client);
+        socket_getpeername($client, $address, $port);
+        $addrinfo = new AddrInfo($address, $port);
+
+        return array(new static($client), $addrinfo);
     }
 
     function setOption($level, $option, $value)
@@ -127,7 +136,7 @@ class Socket
     protected function raiseError($result)
     {
         if (false === $result) {
-            $code = socket_last_error($this->socket);
+            $code = socket_last_error($this->handle);
             $message = socket_strerror($code);
 
             throw new Exception($message, $code);

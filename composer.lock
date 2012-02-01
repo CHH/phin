@@ -1,10 +1,6 @@
 {
-    "hash": "2706f1656c9ecbf4c6c52325584fa2d6",
+    "hash": "3775b0058637515c961f96230c5edcf6",
     "packages": [
-        {
-            "package": "symfony\/console",
-            "version": "v2.0.9"
-        },
         {
             "package": "symfony\/process",
             "version": "v2.0.9"
@@ -14,8 +10,16 @@
             "version": "0.2.0-dev"
         },
         {
+            "package": "monolog\/monolog",
+            "version": "1.0.2"
+        },
+        {
             "package": "symfony\/http-foundation",
-            "version": "v2.0.9"
+            "version": "2.1.0-dev"
+        },
+        {
+            "package": "symfony\/console",
+            "version": "2.1.0-dev"
         }
     ]
 }
