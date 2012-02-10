@@ -210,7 +210,7 @@ class HttpServer
         }
 
         list($client, $addrinfo) = $result;
-        $io  = new Socket\SocketIO($client);
+        $io = new Socket\SocketIO($client);
 
         call_user_func($this->handler, $io);
     }

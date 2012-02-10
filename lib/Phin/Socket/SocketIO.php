@@ -32,7 +32,8 @@ class SocketIO implements \Phin\IO
 
     function read($length = 0)
     {
-        return @socket_read($this->socket->handle, $length, PHP_BINARY_READ);
+        $buf = socket_read($this->socket->handle, $length, PHP_BINARY_READ);
+        return $buf;
     }
 
     function close()
