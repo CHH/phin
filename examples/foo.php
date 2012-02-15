@@ -2,35 +2,28 @@
 
 require_once __DIR__.'/../vendor/.composer/autoload.php';
 
-$server = new \Phin\HttpServer([
-    'pid_file' => '/tmp/phin.pid'
-]);
+$server = new \Phin\HttpServer(array(
+    'pid_file' => '/tmp/phin.pid',
+    'worker_pool_size' => 4
+));
 
-$server->run(function($io) use ($server) {
-    $server->log->info('Got a request!');
+$server->run(function($client) use ($server) {
+    $request  = stream_get_contents($client);
 
-    $message = "This is what I've got:\n";
-
-    while ($chunk = $io->read(16384)) {
-        if (false === $chunk) {
-            $server->log->info("Failure while reading");
-            $io->close();
-            return;
-        }
-        $message .= $chunk;
-    }
+    $message  = "<p>This is what I've got:</p>";
+    $message .= "<pre><code>".$request."</pre></code>";
 
     $date = new \DateTime;
 
-    $io->write("HTTP/1.1 200 OK\r\n");
-    $io->write("Content-Type: text/html\r\n");
-    $io->write("Content-Length: ".strlen($message)."\r\n");
-    $io->write("Connection: close\r\n");
-    $io->write("Date: ".$date->format(\DateTime::RFC1123)."\r\n");
-    $io->write("\r\n");
-    $io->write($message);
+    fwrite($client, "HTTP/1.1 200 OK\r\n");
+    fwrite($client, "Connection: close\r\n");
+    fwrite($client, "Date: ".$date->format(\DateTime::RFC1123)."\r\n");
+    fwrite($client, "Content-Type: text/html\r\n");
+    fwrite($client, "Content-Length: ".strlen($message)."\r\n");
+    fwrite($client, "\r\n");
+    fwrite($client, $message);
 
-    $io->close();
+    fclose($client);
 });
 
 $server->listen();

@@ -92,28 +92,32 @@ class HttpServer
         $config = $this->config;
         $log    = $this->log;
 
+        $context = stream_context_create(array("socket" => array(
+            "backlog" => 5
+        )));
+
+        $flags = STREAM_SERVER_BIND | STREAM_SERVER_LISTEN;
+
         if ($config->socket) {
-            $this->socket = Socket::unix();
+            $this->socket = stream_socket_server("udg://{$config->socket}", $errorCode, $errorMessage, $flags, $context);
         } else {
-            $this->socket = Socket::inet();
+            $this->socket = stream_socket_server("tcp://{$config->host}:{$config->port}", $errorCode, $errorMessage, $flags, $context);
+        }
+
+        if (false === $this->socket) {
+            if ($errorCode === 0) {
+                $errorMessage = "Failed binding to socket";
+            }
+            throw new UnexpectedValueException("Server startup failed: ".$errorMessage);
         }
 
         register_shutdown_function(function($socket, $config) {
-            $socket->close();
+            fclose($socket);
             $config->socket and @unlink($config->socket);
             @unlink($config->pidFile);
         }, $this->socket, $config);
 
-        $this->socket->setNonBlock();
-
-        if ($unixSocket = $config->socket) {
-            # Use an Unix Socket
-            $this->socket->bind($unixSocket);
-        } else {
-            $this->socket->bind($config->host, $config->port);
-        }
-
-        $this->socket->listen(5);
+        stream_set_blocking($this->socket, 0);
 
         if (false === @file_put_contents($config->pidFile, posix_getpid())) {
             throw new UnexpectedValueException(sprintf(
@@ -122,7 +126,7 @@ class HttpServer
             ));
         }
 
-        $this->selfPipe = Socket::createPair(AF_UNIX, SOCK_STREAM, 0);
+        $this->selfPipe = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
 
         for ($i = 1; $i <= $config->workerPoolSize; $i++) {
             $pid = pcntl_fork();
@@ -140,12 +144,12 @@ class HttpServer
             }
         }
 
-        $log->info("Started all workers");
+        $log->info("Started ".count($this->workers)." workers");
 
-        $this->selfPipe[1]->close();
+        fclose($this->selfPipe[1]);
 
         pcntl_signal(SIGCHLD, function() use ($log) {
-            $log->addWarning("Child terminated!\n");
+            $log->warn("Child terminated!\n");
             # Decrement actual worker count and respawn
             # the worker process.
         });
@@ -170,7 +174,7 @@ class HttpServer
             exit();
         });
 
-        $this->selfPipe[0]->close();
+        fclose($this->selfPipe[0]);
 
         for (;;) {
             $this->workerLoop();
@@ -180,12 +184,12 @@ class HttpServer
 
     protected function workerLoop()
     {
-        $read  = array($this->socket->handle);
+        $read  = array($this->socket);
         $write = null;
-        $exception = array($this->selfPipe[1]->handle);
+        $exception = array($this->selfPipe[1]);
 
         # Wait for data ready to be read, or look for exceptions
-        $readySize = @socket_select($read, $write, $exception, 30);
+        $readySize = @stream_select($read, $write, $exception, 30);
 
         if ($readySize === false) {
             # Error happened
@@ -202,17 +206,17 @@ class HttpServer
 
     protected function handleRequest()
     {
-        $result = $this->socket->accept();
+        $client = @stream_socket_accept($this->socket, 0, $peer);
 
-        if (!$result) {
-            usleep(10000);
+        if (!$client) {
+            usleep(100);
             return;
         }
 
-        list($client, $addrinfo) = $result;
-        $io = new Socket\SocketIO($client);
+        $this->log->info("$peer");
 
-        call_user_func($this->handler, $io);
+        call_user_func($this->handler, $client);
+        unset($client);
     }
 
     protected function createEnvironment()
