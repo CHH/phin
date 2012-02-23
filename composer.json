@@ -21,7 +21,6 @@
         "ext-sockets": "*",
         "evenement/evenement": "*",
         "symfony/console": ">=2.0.0,<3.0.0dev",
-        "symfony/http-foundation": ">=2.0.0,<3.0.0dev",
         "monolog/monolog": ">=1.0.0,<2.0.0dev"
     }
 }

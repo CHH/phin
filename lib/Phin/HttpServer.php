@@ -38,7 +38,7 @@ class HttpServer
     # Internal: PIDs of all Workers
     protected $workers;
 
-    protected $leftOver = '';
+    protected $workerPoolSize = 0;
 
     # Initializes the server with the config.
     #
@@ -57,6 +57,8 @@ class HttpServer
                 . "an instance of \\Phin\\Server\\Config"
             );
         }
+
+        $this->workerPoolSize = $this->config->workerPoolSize;
 
         $this->log = new Logger('phin');
 
@@ -128,31 +130,10 @@ class HttpServer
 
         $this->selfPipe = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
 
-        for ($i = 1; $i <= $config->workerPoolSize; $i++) {
-            $pid = pcntl_fork();
+        $this->spawnWorkers();
 
-            if ($pid === -1) {
-                # Error while forking:
-
-            } else if ($pid) {
-                # Parent:
-                $this->workers[] = $pid;
-            } else {
-                # Child:
-                $this->workerProcess();
-                exit();
-            }
-        }
-
-        $log->info("Started ".count($this->workers)." workers");
-
-        fclose($this->selfPipe[1]);
-
-        pcntl_signal(SIGCHLD, function() use ($log) {
-            $log->warn("Child terminated!\n");
-            # Decrement actual worker count and respawn
-            # the worker process.
-        });
+        pcntl_signal(SIGTTIN, array($this, "incrementWorkerCount"));
+        pcntl_signal(SIGTTOU, array($this, "decrementWorkerCount"));
 
         pcntl_signal(SIGINT, function() {
             exit();
@@ -162,10 +143,87 @@ class HttpServer
             $log->info("I'm a Teapot!");
         });
 
+        # Monitor the child processes.
         for (;;) {
             pcntl_signal_dispatch();
-            usleep(100000);
+
+            $read      = array($this->selfPipe[1]);
+            $write     = null;
+            $exception = null;
+            $readySize = @stream_select($read, $write, $exception, 10);
+
+            if ($readySize > 0 and $read) {
+                $childPid = trim(fgets($read[0]));
+                $this->workers[$childPid]["heartbeat"] = time();
+                $this->log->info("Child [$childPid] is alive.");
+            }
+
+            $this->removeStaleWorkers();
+
+            # Maintain a stable worker count. Compares the actual worker count
+            # to the configured worker count and spawns workers when necessary.
+            $this->spawnWorkers();
         }
+    }
+
+    function incrementWorkerCount()
+    {
+        ++$this->workerPoolSize;
+        $this->spawnWorkers();
+    }
+
+    function decrementWorkerCount()
+    {
+        --$this->workerPoolSize;
+    }
+
+    protected function removeStaleWorkers()
+    {
+        $now = time();
+
+        # Go through all workers and kill those who did not
+        # made a heartbeat within the timeout period.
+        foreach ($this->workers as $pid => $info) {
+            if ($pid === pcntl_waitpid($pid, $s, WNOHANG)) {
+                unset($this->workers[$pid]);
+            } else if ($now - $info["heartbeat"] > $this->config->workerTimeout) {
+                # Kill the worker and remove it from the workers array.
+                posix_kill($pid, SIGKILL);
+                unset($this->workers[$pid]);
+            }
+        }
+    }
+
+    protected function spawnWorkers()
+    {
+        $workersToSpawn = $this->workerPoolSize - count($this->workers);
+
+        if ($workersToSpawn == 0) {
+            return 0;
+        }
+
+        for ($i = 0; $i < $workersToSpawn; $i++) {
+            $pid = pcntl_fork();
+
+            if ($pid === -1) {
+                # Error while forking.
+                exit();
+
+            } else if ($pid) {
+                # Parent:
+                $this->workers[$pid] = array(
+                    "heartbeat" => time()
+                );
+            } else {
+                # Child:
+                $this->workerProcess();
+                exit();
+            }
+        }
+
+        $this->log->info("Spawned $i Workers");
+
+        return $i;
     }
 
     protected function workerProcess()
@@ -174,33 +232,46 @@ class HttpServer
             exit();
         });
 
-        fclose($this->selfPipe[0]);
+        fclose($this->selfPipe[1]);
 
         for (;;) {
-            $this->workerLoop();
             pcntl_signal_dispatch();
+            $this->workerExecute();
         }
     }
 
-    protected function workerLoop()
+    protected function workerExecute()
     {
-        $read  = array($this->socket);
-        $write = null;
-        $exception = array($this->selfPipe[1]);
+        $read      = array($this->socket);
+        $write     = null;
+        $exception = array($this->selfPipe[0]);
 
         # Wait for data ready to be read, or look for exceptions
-        $readySize = @stream_select($read, $write, $exception, 30);
+        $readySize = @stream_select($read, $write, $exception, 5);
 
         if ($readySize === false) {
             # Error happened
+            exit(1);
+
         } else if ($readySize > 0) {
-            # Let the child kill itself when the parent closed the pipe
+            # Let the child kill itself when the parent closed the pipe 
+            # (parent was killed)
             if ($exception) {
                 exit();
-            } else if ($read) {
+            }
+
+            # Something is available to read on the bound socket.
+            if ($read) {
                 # Handle Request
                 $this->handleRequest();
             }
+        # Send the heartbeat to the parent process everytime stream_select() times out.
+        } else {
+            $msg = posix_getpid()."\n";
+
+            # Exit when the fwrite() fails (when parent died and stream_select()
+            # did not catch this).
+            if (@fwrite($this->selfPipe[0], $msg) < strlen($msg)) exit();
         }
     }
 
@@ -209,27 +280,13 @@ class HttpServer
         $client = @stream_socket_accept($this->socket, 0, $peer);
 
         if (!$client) {
-            usleep(100);
             return;
         }
 
-        $this->log->info("$peer");
+        $this->log->info("Connection from $peer");
 
         call_user_func($this->handler, $client);
         unset($client);
-    }
-
-    protected function createEnvironment()
-    {
-        $config = $this->config;
-
-        $env = new Environment;
-        $env->set("SERVER_NAME", $config->host);
-        $env->set("SERVER_PORT", $config->port);
-        $env->set("DOCUMENT_ROOT", $config->documentRoot);
-        $env->set("TMP", $config->tempDir);
-
-        return $env;
     }
 
     function stopListening()

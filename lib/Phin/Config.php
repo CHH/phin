@@ -25,6 +25,9 @@ class Config
 
     var $pidFile = '/var/run/phin.pid';
 
+    # Worker timeout in seconds.
+    var $workerTimeout = 60;
+
     function __construct(array $options = array())
     {
         $this->tempDir = sys_get_temp_dir();
@@ -34,6 +37,16 @@ class Config
     function isDebugModeEnabled()
     {
         return (bool) $this->debugMode;
+    }
+
+    function __set($prop, $value)
+    {
+        throw new RuntimeException("Undefined property $prop.");
+    }
+
+    function __get($prop)
+    {
+        throw new RuntimeException("Undefined property $prop.");
     }
 
     protected function setOptions(array $options)
