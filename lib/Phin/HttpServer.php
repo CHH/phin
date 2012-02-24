@@ -231,7 +231,7 @@ class HttpServer
                 exit();
 
             } else if ($pid) {
-                # Parent:
+                # Parent, save the worker's process ID.
                 $this->workers[$pid] = array(
                     "heartbeat" => time()
                 );
