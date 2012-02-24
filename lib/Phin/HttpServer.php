@@ -13,8 +13,6 @@ use Phin\Config,
 
 class HttpServer
 {
-    const VERSION = "0.4.0";
-
     # Public: An EventEmitter, for binding handlers to
     # Phin's events.
     var $events;
@@ -110,17 +108,12 @@ class HttpServer
 
         if (false === $this->socket) {
             if ($errorCode === 0) {
-                $errorMessage = "Failed binding to socket";
+                $errorMessage = "Failed binding to socket.";
             }
             throw new UnexpectedValueException("Server startup failed: ".$errorMessage);
         }
 
-        register_shutdown_function(function($socket, $config) {
-            fclose($socket);
-            $config->socket and @unlink($config->socket);
-            @unlink($config->pidFile);
-        }, $this->socket, $config);
-
+        # Make the server socket non-blocking.
         stream_set_blocking($this->socket, 0);
 
         if (false === @file_put_contents($config->pidFile, posix_getpid())) {
@@ -132,7 +125,10 @@ class HttpServer
 
         $this->selfPipe = stream_socket_pair(STREAM_PF_UNIX, STREAM_SOCK_STREAM, STREAM_IPPROTO_IP);
 
+        # Spawn up the initial worker pool.
         $this->spawnWorkers();
+
+        register_shutdown_function(array($this, "stopListening"));
 
         pcntl_signal(SIGTTIN, array($this, "incrementWorkerCount"));
         pcntl_signal(SIGTTOU, array($this, "decrementWorkerCount"));
@@ -189,6 +185,17 @@ class HttpServer
         foreach (array_slice($this->workers, 0, $workersToKill) as $pid => $info) {
             posix_kill($pid, SIGKILL);
         }
+    }
+
+    function stopListening()
+    {
+        @fclose($this->socket);
+        @fclose($this->selfPipe[0]);
+        @fclose($this->selfPipe[1]);
+
+        if ($this->config->socket) unlink($this->config->socket);
+
+        unlink($this->config->pidFile);
     }
 
     protected function removeStaleWorkers()
@@ -301,10 +308,6 @@ class HttpServer
 
         call_user_func($this->handler, $client);
         unset($client);
-    }
-
-    function stopListening()
-    {
     }
 
     # Returns the config instance.
