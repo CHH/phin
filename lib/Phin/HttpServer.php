@@ -84,11 +84,13 @@ class HttpServer
     function listen()
     {
         if (file_exists($this->config->pidFile)) {
-            throw new UnexpectedValueException(sprintf(
-                "Existing PID file found in %s. Maybe the server is already running. Delete this file,
-                or make sure the server does not run.",
-                $this->config->pidFile
-            ));
+            $serverPid = trim(file_get_contents($this->config->pidFile));
+
+            if (!posix_kill($serverPid, 0)) {
+                unlink($this->config->pidFile);
+            } else {
+                throw new UnexpectedValueException("Server is already running with PID $serverPid.");
+            }
         }
 
         $config = $this->config;
@@ -143,6 +145,11 @@ class HttpServer
             $log->info("I'm a Teapot!");
         });
 
+        $this->log->info(sprintf(
+            "Listening on %s",
+            $config->socket ? $config->socket : $config->host.":".$config->port
+        ));
+
         # Monitor the child processes.
         for (;;) {
             pcntl_signal_dispatch();
@@ -152,6 +159,7 @@ class HttpServer
             $exception = null;
             $readySize = @stream_select($read, $write, $exception, 10);
 
+            # Handle the heartbeat sent by a worker.
             if ($readySize > 0 and $read) {
                 $childPid = trim(fgets($read[0]));
                 $this->workers[$childPid]["heartbeat"] = time();
@@ -175,6 +183,12 @@ class HttpServer
     function decrementWorkerCount()
     {
         --$this->workerPoolSize;
+
+        $workersToKill = count($this->workers) - $this->workerPoolSize;
+
+        foreach (array_slice($this->workers, 0, $workersToKill) as $pid => $info) {
+            posix_kill($pid, SIGKILL);
+        }
     }
 
     protected function removeStaleWorkers()
