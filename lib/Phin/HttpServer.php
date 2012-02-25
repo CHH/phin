@@ -3,8 +3,6 @@
 namespace Phin;
 
 use Phin\Config,
-    Phin\Request\StandardParser,
-    Phin\Socket,
     Phin\InvalidArgumentException,
     Phin\UnexpectedValueException,
     Monolog\Logger,
@@ -57,6 +55,7 @@ class HttpServer
         }
 
         $this->workerPoolSize = $this->config->workerPoolSize;
+        $this->events = $this->config->events;
 
         $this->log = new Logger('phin');
 
@@ -159,7 +158,8 @@ class HttpServer
             if ($readySize > 0 and $read) {
                 $childPid = trim(fgets($read[0]));
                 $this->workers[$childPid]["heartbeat"] = time();
-                $this->log->info("Child [$childPid] is alive.");
+
+                $this->log->debug("Child [$childPid] is alive.");
             }
 
             $this->removeStaleWorkers();
@@ -203,10 +203,15 @@ class HttpServer
         $now = time();
 
         # Go through all workers and kill those who did not
-        # made a heartbeat within the timeout period.
+        # made a heartbeat within the timeout period or
+        # remove those who exited.
         foreach ($this->workers as $pid => $info) {
+            # Look if the child has exited.
             if ($pid === pcntl_waitpid($pid, $s, WNOHANG)) {
                 unset($this->workers[$pid]);
+
+            # Look if the child's last heartbeat was not made within 
+            # the timeout period.
             } else if ($now - $info["heartbeat"] > $this->config->workerTimeout) {
                 # Kill the worker and remove it from the workers array.
                 posix_kill($pid, SIGKILL);
@@ -224,6 +229,8 @@ class HttpServer
         }
 
         for ($i = 0; $i < $workersToSpawn; $i++) {
+            $this->events->emit("beforeFork", array($this));
+
             $pid = pcntl_fork();
 
             if ($pid === -1) {
@@ -236,13 +243,14 @@ class HttpServer
                     "heartbeat" => time()
                 );
             } else {
+                $this->events->emit("afterFork", array($this));
                 # Child:
                 $this->workerProcess();
                 exit();
             }
         }
 
-        $this->log->info("Spawned $i Workers");
+        $this->log->debug("Spawned $i Workers.");
 
         return $i;
     }
@@ -285,6 +293,10 @@ class HttpServer
             if ($read) {
                 # Handle Request
                 $this->handleRequest();
+
+                $msg = posix_getpid()."\n";
+
+                if (@fwrite($this->selfPipe[0], $msg) < strlen($msg)) exit();
             }
         # Send the heartbeat to the parent process everytime stream_select() times out.
         } else {
@@ -304,7 +316,7 @@ class HttpServer
             return;
         }
 
-        $this->log->info("Connection from $peer");
+        $this->log->debug("Connection from $peer");
 
         call_user_func($this->handler, $client);
         unset($client);

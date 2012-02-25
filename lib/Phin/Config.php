@@ -2,14 +2,10 @@
 
 namespace Phin;
 
+use Evenement\EventEmitter;
+
 class Config
 {
-    # Server Document Root.
-    var $documentRoot;
-
-    # Turn on debug messages. Does nothing currently.
-    var $debugMode = false;
-
     # Path for temporary files.
     var $tempDir;
 
@@ -28,28 +24,54 @@ class Config
     # Worker timeout in seconds.
     var $workerTimeout = 60;
 
-    function __construct(array $options = array())
+    # EventEmitter instance.
+    var $events;
+
+    var $debug = false;
+
+    function __construct($options = array())
     {
+        $this->events  = new EventEmitter;
         $this->tempDir = sys_get_temp_dir();
-        empty($options) or $this->setOptions($options);
+
+        if ($options) $this->setOptions($options);
     }
 
-    function isDebugModeEnabled()
+    # Reads a config file. Config files are normal PHP files, except
+    # that `$this` refers to the config object.
+    #
+    # filename - File Path.
+    #
+    # Returns nothing.
+    function readConfigFile($filename)
     {
-        return (bool) $this->debugMode;
+        if (!is_file($filename)) {
+            throw new InvalidArgumentException("$filename does not exist.");
+        }
+
+        include($filename);
     }
 
-    function __set($prop, $value)
+    # Disable dynamic properties on this object:
+    function __get($prop)         { throw new RuntimeException("Undefined property $prop."); }
+    function __set($prop, $value) { throw new RuntimeException("Undefined property $prop."); }
+
+    # Register a handler which is run before each worker is forked.
+    function beforeFork($callback)
     {
-        throw new RuntimeException("Undefined property $prop.");
+        $this->events->on("beforeFork", $callback);
+        return $this;
     }
 
-    function __get($prop)
+    # Register a handler to run after a worker was forked.
+    function afterFork($callback)
     {
-        throw new RuntimeException("Undefined property $prop.");
+        $this->events->on("afterFork", $callback);
+        return $this;
     }
 
-    protected function setOptions(array $options)
+    # Initialize the config from an options array.
+    protected function setOptions($options)
     {
         foreach ($options as $option => $value) {
             // Convert option_name to setOptionName
